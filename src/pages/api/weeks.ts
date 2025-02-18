@@ -10,6 +10,7 @@ interface Week {
 
 // Hard-coded weeks - newest to oldest (starting from Sundays)
 const WEEKS = [
+  '02-09-25',
   '02-02-25',
   '01-26-25',
   '01-19-25',
