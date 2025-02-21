@@ -21,10 +21,7 @@ export default function Home() {
 
   const fetchCalls = async () => {
     try {
-      const client = new AircallAPI(
-        process.env.NEXT_PUBLIC_AIRCALL_API_ID,
-        process.env.NEXT_PUBLIC_AIRCALL_API_TOKEN
-      );
+      const client = new AircallAPI('9ec53b199aeda57d9daf6279a4c88a7f');
       
       const data = await client.getCalls({
         from: dateRange.from.toString(),
@@ -72,7 +69,6 @@ export default function Home() {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     if (activeTab === 'emails') {
       fetchAllCampaignData();
@@ -81,7 +77,6 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  // Poll for updates every 5 minutes
   useEffect(() => {
     let interval;
     if (activeTab === 'emails') {
@@ -92,7 +87,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  // Fetch calls when date range changes
   useEffect(() => {
     if (activeTab === 'calls') {
       fetchCalls();
@@ -103,46 +97,46 @@ export default function Home() {
     if (!data?.campaign) return null;
     
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+      <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
             {title} - {data.campaign.name}
           </h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {data.campaign.stats?.opens !== undefined && (
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">Opens</h3>
-              <p className="text-2xl font-bold text-blue-900">{data.campaign.stats.opens}</p>
+            <div style={{ background: 'var(--primary-background)', color: 'var(--primary)' }} className="p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Opens</h3>
+              <p className="text-2xl font-bold">{data.campaign.stats.opens}</p>
             </div>
           )}
           
           {data.campaign.stats?.clicks !== undefined && (
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-green-800 mb-2">Clicks</h3>
-              <p className="text-2xl font-bold text-green-900">{data.campaign.stats.clicks}</p>
+            <div style={{ background: 'var(--success-background)', color: 'var(--success)' }} className="p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Clicks</h3>
+              <p className="text-2xl font-bold">{data.campaign.stats.clicks}</p>
             </div>
           )}
           
           {data.campaign.stats?.replies !== undefined && (
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-purple-800 mb-2">Total Replies</h3>
-              <p className="text-2xl font-bold text-purple-900">{data.campaign.stats.replies}</p>
+            <div style={{ background: 'var(--primary-background)', color: 'var(--primary)' }} className="p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Total Replies</h3>
+              <p className="text-2xl font-bold">{data.campaign.stats.replies}</p>
             </div>
           )}
           
           {data.campaign.stats?.repliesPositive !== undefined && (
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-green-800 mb-2">Positive Replies</h3>
-              <p className="text-2xl font-bold text-green-900">{data.campaign.stats.repliesPositive}</p>
+            <div style={{ background: 'var(--success-background)', color: 'var(--success)' }} className="p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Positive Replies</h3>
+              <p className="text-2xl font-bold">{data.campaign.stats.repliesPositive}</p>
             </div>
           )}
           
           {data.campaign.stats?.repliesNegative !== undefined && (
-            <div className="bg-red-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-red-800 mb-2">Negative Replies</h3>
-              <p className="text-2xl font-bold text-red-900">{data.campaign.stats.repliesNegative}</p>
+            <div style={{ background: 'var(--error-background)', color: 'var(--error)' }} className="p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Negative Replies</h3>
+              <p className="text-2xl font-bold">{data.campaign.stats.repliesNegative}</p>
             </div>
           )}
         </div>
@@ -157,27 +151,27 @@ export default function Home() {
         <meta name="description" content="View email campaign analytics" />
       </Head>
 
-      <div className="min-h-screen bg-gray-50">
+      <div style={{ background: 'var(--muted-background)' }} className="min-h-screen">
         <div className="max-w-6xl mx-auto px-8 pt-8">
-          <div className="border-b border-gray-200">
+          <div style={{ borderBottom: '1px solid var(--border)' }}>
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab('emails')}
-                className={`${
-                  activeTab === 'emails'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+                style={{
+                  borderColor: activeTab === 'emails' ? 'var(--primary)' : 'transparent',
+                  color: activeTab === 'emails' ? 'var(--primary)' : 'var(--muted)'
+                }}
               >
                 Emails
               </button>
               <button
                 onClick={() => setActiveTab('calls')}
-                className={`${
-                  activeTab === 'calls'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+                style={{
+                  borderColor: activeTab === 'calls' ? 'var(--primary)' : 'transparent',
+                  color: activeTab === 'calls' ? 'var(--primary)' : 'var(--muted)'
+                }}
               >
                 Calls
               </button>
@@ -187,7 +181,7 @@ export default function Home() {
 
         {error && (
           <div className="max-w-6xl mx-auto px-8 pt-4">
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div style={{ background: 'var(--error-background)', color: 'var(--error)', borderColor: 'var(--error)' }} className="border px-4 py-3 rounded relative" role="alert">
               {error}
             </div>
           </div>
@@ -198,20 +192,21 @@ export default function Home() {
             <>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
                     Email Campaign Analytics
                   </h1>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-                <p className="text-yellow-800">
+              <div style={{ background: 'var(--warning-background)', borderColor: 'var(--warning)', color: 'var(--warning)' }} className="border rounded-lg p-4 mb-8">
+                <p>
                   Note: This data comes from the QuickMail API which is limited and may show inconsistencies with the analytics directly on their dashboard. We are in discussions with QuickMail to improve functionality and data consistency. For the most accurate data, please refer to{' '}
                   <a 
                     href="https://docs.google.com/spreadsheets/d/1BSbAV3MmjsHK2lIQ-1nsS3V3c74rNDqzlEpyEAhT_PM/edit?gid=113981412#gid=113981412"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline"
+                    style={{ color: 'var(--primary)' }}
+                    className="underline hover:opacity-80"
                   >
                     this spreadsheet
                   </a>.
@@ -221,10 +216,10 @@ export default function Home() {
               {loading ? (
                 <div className="space-y-8">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-lg shadow-sm p-6">
+                    <div key={i} style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6">
                       <div className="animate-pulse space-y-4">
-                        <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-                        <div className="h-[200px] bg-gray-200 rounded w-full"></div>
+                        <div style={{ background: 'var(--muted-background)' }} className="h-8 rounded w-1/4"></div>
+                        <div style={{ background: 'var(--muted-background)' }} className="h-[200px] rounded w-full"></div>
                       </div>
                     </div>
                   ))}
@@ -252,17 +247,22 @@ export default function Home() {
             <>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
                     Call Analytics
                   </h1>
                 </div>
                 <div className="flex gap-4">
                   <div>
-                    <label htmlFor="from-date" className="block text-sm font-medium text-gray-700">From</label>
+                    <label htmlFor="from-date" className="block text-sm font-medium" style={{ color: 'var(--muted)' }}>From</label>
                     <input
                       type="date"
                       id="from-date"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      style={{
+                        background: 'var(--background)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--foreground)'
+                      }}
+                      className="mt-1 block w-full rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                       value={new Date(dateRange.from * 1000).toISOString().split('T')[0]}
                       onChange={(e) => setDateRange(prev => ({
                         ...prev,
@@ -271,11 +271,16 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="to-date" className="block text-sm font-medium text-gray-700">To</label>
+                    <label htmlFor="to-date" className="block text-sm font-medium" style={{ color: 'var(--muted)' }}>To</label>
                     <input
                       type="date"
                       id="to-date"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      style={{
+                        background: 'var(--background)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--foreground)'
+                      }}
+                      className="mt-1 block w-full rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                       value={new Date(dateRange.to * 1000).toISOString().split('T')[0]}
                       onChange={(e) => setDateRange(prev => ({
                         ...prev,
@@ -288,66 +293,68 @@ export default function Home() {
 
               {loading ? (
                 <div className="space-y-8">
-                  <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6">
                     <div className="animate-pulse space-y-4">
-                      <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-                      <div className="h-[400px] bg-gray-200 rounded w-full"></div>
+                      <div style={{ background: 'var(--muted-background)' }} className="h-8 rounded w-1/4"></div>
+                      <div style={{ background: 'var(--muted-background)' }} className="h-[400px] rounded w-full"></div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y" style={{ borderColor: 'var(--border)' }}>
+                      <thead style={{ background: 'var(--muted-background)' }}>
                         <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             Date/Time
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             Direction
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             Status
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             Duration
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             Phone
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
                             User
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody style={{ background: 'var(--background)', borderColor: 'var(--border)' }} className="divide-y">
                         {callsData?.calls.map((call) => (
                           <tr key={call.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
                               {formatUnixTimestamp(call.started_at)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                call.direction === 'inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                              }`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span style={{
+                                background: call.direction === 'inbound' ? 'var(--success-background)' : 'var(--primary-background)',
+                                color: call.direction === 'inbound' ? 'var(--success)' : 'var(--primary)'
+                              }} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                                 {call.direction}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                call.status === 'done' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span style={{
+                                background: call.status === 'done' ? 'var(--success-background)' : 'var(--warning-background)',
+                                color: call.status === 'done' ? 'var(--success)' : 'var(--warning)'
+                              }} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                                 {call.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
                               {call.duration}s
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
                               {call.raw_digits}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
                               {call.user?.name || 'N/A'}
                             </td>
                           </tr>
@@ -356,10 +363,10 @@ export default function Home() {
                     </table>
                   </div>
                   {callsData?.meta && (
-                    <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                      <div className="text-sm text-gray-700">
-                        Showing <span className="font-medium">{callsData.calls.length}</span> of{' '}
-                        <span className="font-medium">{callsData.meta.total}</span> calls
+                    <div style={{ background: 'var(--background)', borderColor: 'var(--border)' }} className="px-4 py-3 border-t sm:px-6">
+                      <div className="text-sm" style={{ color: 'var(--muted)' }}>
+                        Showing <span className="font-medium" style={{ color: 'var(--foreground)' }}>{callsData.calls.length}</span> of{' '}
+                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>{callsData.meta.total}</span> calls
                       </div>
                     </div>
                   )}

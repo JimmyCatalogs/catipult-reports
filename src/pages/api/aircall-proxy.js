@@ -1,28 +1,82 @@
+// Dynamic API route handler for Aircall proxy
 export default async function handler(req, res) {
-  const { pathname, searchParams } = new URL(req.url, `http://${req.headers.host}`);
-  const path = pathname.replace('/api/aircall-proxy', '');
+  // Get the path from the query parameter
+  const path = req.query.path || '';
+  const normalizedPath = '/' + path;
   
-  const apiId = process.env.AIRCALL_API_ID;
+  const apiId = '9ec53b199aeda57d9daf6279a4c88a7f';
   const apiToken = process.env.AIRCALL_API_TOKEN;
 
-  if (!apiId || !apiToken) {
-    return res.status(500).json({ error: 'Aircall API credentials not configured' });
+  if (!apiToken) {
+    console.error('Missing Aircall API token in environment variables');
+    return res.status(500).json({ error: 'Aircall API token not configured. Please check AIRCALL_API_TOKEN in .env.local' });
   }
 
+  // console.log('Environment check:', {
+  //   hasApiId: !!apiId,
+  //   hasApiToken: !!apiToken,
+  //   apiIdLength: apiId.length,
+  //   tokenLength: apiToken.length,
+  //   path: req.query.path
+  // });
+
   try {
+    // Create a new object without the path parameter
+    const { path: _, ...queryParams } = req.query;
+    const searchParams = new URLSearchParams(queryParams);
     const queryString = searchParams.toString();
-    const url = `https://api.aircall.io/v1${path}${queryString ? '?' + queryString : ''}`;
+    const url = `https://api.aircall.io/v1${normalizedPath}${queryString ? '?' + queryString : ''}`;
     
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${apiId}:${apiToken}`).toString('base64')}`,
-      },
+    // Enhanced request logging
+    console.log('Aircall API Request Details:', {
+      url,
+      method: req.method,
+      path: normalizedPath,
+      queryString,
+      queryParams,
+      auth: {
+        apiId,
+        hasToken: !!apiToken,
+        authHeader: 'Basic ' + Buffer.from(`${apiId}:${apiToken}`).toString('base64')
+      }
     });
 
-    const data = await response.json();
+    const response = await fetch(url, {
+      method: req.method,
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${apiId}:${apiToken}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      ...(req.body && req.method !== 'GET' && req.method !== 'HEAD' && { 
+        body: JSON.stringify(req.body) 
+      }),
+    });
+
+    // Detailed response logging
+    const responseText = await response.text();
+    // console.log('Aircall API Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   headers: Object.fromEntries(response.headers.entries()),
+    //   body: responseText
+    // });
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      throw new Error(`Invalid JSON response: ${responseText}`);
+    }
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch data from Aircall API');
+      console.error('Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data
+      });
+      throw new Error(data.message || `API Error: ${response.status} ${response.statusText}`);
     }
 
     res.status(200).json(data);
