@@ -47,7 +47,6 @@ export class QuickMailAPI {
       });
       
       const text = await response.text();
-      console.log("API Response:", text);
 
       let data;
       try {

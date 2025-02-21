@@ -1,7 +1,6 @@
 export default async function handler(req, res) {
   try {
     const apiUrl = 'https://api.quickmail.com/v2/graphql';
-    console.log('Proxying request to:', apiUrl);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
