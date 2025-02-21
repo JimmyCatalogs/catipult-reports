@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const { path: _, ...queryParams } = req.query;
     const searchParams = new URLSearchParams(queryParams);
     const queryString = searchParams.toString();
-    const url = `https://api.aircall.io/v1${normalizedPath}${queryString ? '?' + queryString : ''}`;
+    const url = `https://api.aircall.io/v1${normalizedPath}${queryString ? `?${queryString}` : ''}`;
     
     // Enhanced request logging
     console.log('Aircall API Request Details:', {

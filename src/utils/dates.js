@@ -19,6 +19,15 @@ export function formatFolderDate(date) {
   return `${month}-${day}-${year}`;
 }
 
+export function formatAnalyticsDate(timestamp) {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
 export function getWeekRange(sundayDate) {
   const saturday = new Date(sundayDate);
   saturday.setDate(sundayDate.getDate() + 6);
