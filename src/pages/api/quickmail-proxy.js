@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     });
 
     const text = await response.text();
-    console.log('Quickmail API response:', text);
     
     try {
       const data = JSON.parse(text);

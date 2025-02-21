@@ -127,6 +127,20 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+            <p className="text-yellow-800">
+              Note: This data comes from the QuickMail API which is limited and may show inconsistencies with the analytics directly on their dashboard. We are in discussions with QuickMail to improve functionality and data consistency. For the most accurate data, please refer to{' '}
+              <a 
+                href="https://docs.google.com/spreadsheets/d/1BSbAV3MmjsHK2lIQ-1nsS3V3c74rNDqzlEpyEAhT_PM/edit?gid=113981412#gid=113981412"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                this spreadsheet
+              </a>.
+            </p>
+          </div>
+
           {loading ? (
             <div className="space-y-8">
               {[...Array(3)].map((_, i) => (
