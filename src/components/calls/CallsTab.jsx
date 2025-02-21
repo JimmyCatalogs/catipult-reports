@@ -96,40 +96,6 @@ export function CallsTab({
         </div>
       </div>
 
-      {activeCallsView === 'list' && (
-        <div className="mb-4 flex gap-4">
-          <select
-            value={filters.direction}
-            onChange={(e) => onFilter('direction', e.target.value)}
-            style={{
-              background: 'var(--background)',
-              borderColor: 'var(--border)',
-              color: 'var(--foreground)'
-            }}
-            className="rounded-md shadow-sm text-sm"
-          >
-            <option value="">All Directions</option>
-            <option value="inbound">Inbound</option>
-            <option value="outbound">Outbound</option>
-          </select>
-          <select
-            value={filters.status}
-            onChange={(e) => onFilter('status', e.target.value)}
-            style={{
-              background: 'var(--background)',
-              borderColor: 'var(--border)',
-              color: 'var(--foreground)'
-            }}
-            className="rounded-md shadow-sm text-sm"
-          >
-            <option value="">All Statuses</option>
-            <option value="done">Done</option>
-            <option value="missed">Missed</option>
-            <option value="voicemail">Voicemail</option>
-          </select>
-        </div>
-      )}
-
       {(initialLoading || refreshing) ? (
         <div className="relative min-h-[400px] flex items-center justify-center">
           <div style={{ background: 'var(--background)' }} className="p-6 rounded-lg shadow-lg w-64">

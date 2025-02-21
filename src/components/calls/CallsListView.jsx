@@ -5,7 +5,6 @@ export function CallsListView({
   callsData,
   sorting,
   pagination,
-  filters,
   onSort,
   onPageChange
 }) {
@@ -105,8 +104,6 @@ export function CallsListView({
                 {((pagination.page - 1) * pagination.per_page) + 1} - {Math.min(pagination.page * pagination.per_page, callsData.meta.total)}
               </span> of{' '}
               <span className="font-medium" style={{ color: 'var(--foreground)' }}>{callsData.meta.total}</span> calls
-              {filters.direction && <span className="ml-1">(filtered by {filters.direction})</span>}
-              {filters.status && <span className="ml-1">(filtered by {filters.status})</span>}
             </div>
             <div className="flex items-center gap-2">
               <button

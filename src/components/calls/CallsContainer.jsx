@@ -34,11 +34,6 @@ export function CallsContainer() {
     order: 'desc',
     order_by: 'started_at'
   });
-  const [filters, setFilters] = useState({
-    direction: '',
-    status: '',
-    user_id: ''
-  });
 
   const fetchCalls = async (forceRefresh = false, customDateRange = null) => {
     try {
@@ -56,9 +51,13 @@ export function CallsContainer() {
         to: fetchDateRange.to.toString(),
         ...pagination,
         ...sorting,
-        ...filters
+        direction: '',
+        status: '',
+        user_id: ''
       }, !forceRefresh);
       
+      // Update store with new data and date range
+      callsStore.updateCalls(data.calls, fetchDateRange);
       setCallsData(data);
 
       // Get analytics directly from store since data is already fetched
@@ -90,11 +89,10 @@ export function CallsContainer() {
     }
   }, [refreshing]);
 
-  // Effect to update view from store when switching views or applying filters
+  // Effect to update view from store when switching views
   useEffect(() => {
     if (initialFetchDone.current && !refreshing) {
       const data = callsStore.getCalls({
-        filters,
         sorting,
         pagination
       });
@@ -105,19 +103,12 @@ export function CallsContainer() {
         setCallsAnalytics(analytics);
       }
     }
-  }, [activeCallsView, pagination, sorting, filters, refreshing]);
+  }, [activeCallsView, pagination, sorting, refreshing]);
 
   const handleSort = (field) => {
     setSorting(prev => ({
       order: prev.order_by === field && prev.order === 'desc' ? 'asc' : 'desc',
       order_by: field
-    }));
-  };
-
-  const handleFilter = (type, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [type]: value
     }));
   };
 
@@ -156,12 +147,10 @@ export function CallsContainer() {
       initialLoading={initialLoading}
       refreshing={refreshing}
       sorting={sorting}
-      filters={filters}
       pagination={pagination}
       dateRange={dateRange}
       onRefresh={() => fetchCalls(true)}
       onSort={handleSort}
-      onFilter={handleFilter}
       onPageChange={handlePageChange}
       onDateChange={handleDateChange}
       analyticsProgress={analyticsProgress}

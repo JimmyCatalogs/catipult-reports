@@ -31,23 +31,20 @@ export class CallsStore {
     this.data.meta.dateRange = dateRange;
   }
 
-  // Get filtered, sorted, and paginated calls
-  getCalls({ filters, sorting, pagination }) {
-    let filteredCalls = this.filterCalls(filters);
-    let sortedCalls = this.sortCalls(filteredCalls, sorting);
-    return this.paginateCalls(sortedCalls, pagination);
-  }
+  // Get sorted and paginated calls
+  getCalls({ sorting, pagination }) {
+    // Get all calls and filter by date range
+    let allCalls = this.data.calls.allIds.map(id => this.data.calls.byId[id]);
+    const { from, to } = this.data.meta.dateRange;
+    
+    // Filter by date range
+    allCalls = allCalls.filter(call => {
+      const callTime = call.started_at;
+      return callTime >= from && callTime <= to;
+    });
 
-  // Filter calls based on current filters
-  filterCalls(filters) {
-    return this.data.calls.allIds
-      .map(id => this.data.calls.byId[id])
-      .filter(call => {
-        if (filters.direction && call.direction !== filters.direction) return false;
-        if (filters.status && call.status !== filters.status) return false;
-        if (filters.user_id && call.user?.id !== filters.user_id) return false;
-        return true;
-      });
+    let sortedCalls = this.sortCalls(allCalls, sorting);
+    return this.paginateCalls(sortedCalls, pagination);
   }
 
   // Sort calls based on current sorting
