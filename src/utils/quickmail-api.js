@@ -1,6 +1,25 @@
-const QUICKMAIL_API_URL = 'https://api.quickmail.com/v2/graphiql';
+const QUICKMAIL_API_URL = '/api/quickmail-proxy';
 
-class QuickMailAPI {
+/**
+ * Formats campaign details into a standardized response object
+ * @param {Object} data - Raw campaign data from the API
+ * @returns {Object} Formatted campaign details
+ */
+const formatCampaignDetails = (data) => ({
+  campaign: {
+    id: data.agency.campaign.id,
+    name: data.agency.campaign.name,
+    appUrl: data.agency.campaign.appUrl,
+    stats: data.agency.campaign.stats
+  },
+  agency: {
+    id: data.agency.id,
+    name: data.agency.name,
+    appUrl: data.agency.appUrl
+  }
+});
+
+export class QuickMailAPI {
   constructor(apiKey, campaignId) {
     if (!apiKey) {
       throw new Error('QuickMail API key is required');
@@ -28,6 +47,8 @@ class QuickMailAPI {
       });
       
       const text = await response.text();
+      console.log("API Response:", text);
+
       let data;
       try {
         data = JSON.parse(text);
@@ -50,7 +71,8 @@ class QuickMailAPI {
     }
   }
 
-  async getCampaignDetails() {
+  async getCampaignDetails(dayRange = 7) {
+    const statsFilter = dayRange ? `(dayRange: ${dayRange})` : '';
     const query = `
       {
         agency {
@@ -61,7 +83,7 @@ class QuickMailAPI {
             id
             name
             appUrl
-            stats {
+            stats${statsFilter} {
               clicks
               opens
               replies
@@ -73,11 +95,7 @@ class QuickMailAPI {
       }
     `;
 
-    return this.request(query);
+    const data = await this.request(query);
+    return formatCampaignDetails(data);
   }
 }
-
-// Export the class
-module.exports = {
-  QuickMailAPI
-};
