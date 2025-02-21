@@ -6,7 +6,7 @@ import { EmailCampaignTab } from '../components/emails/EmailCampaignTab';
 import { CallsContainer } from '../components/calls/CallsContainer';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('emails');
+  const [activeTab, setActiveTab] = useState('calls');
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -78,16 +78,6 @@ export default function Home() {
           <div style={{ borderBottom: '1px solid var(--border)' }}>
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
               <button
-                onClick={() => setActiveTab('emails')}
-                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
-                style={{
-                  borderColor: activeTab === 'emails' ? 'var(--primary)' : 'transparent',
-                  color: activeTab === 'emails' ? 'var(--primary)' : 'var(--muted)'
-                }}
-              >
-                Emails
-              </button>
-              <button
                 onClick={() => setActiveTab('calls')}
                 className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
                 style={{
@@ -96,6 +86,16 @@ export default function Home() {
                 }}
               >
                 Calls
+              </button>
+              <button
+                onClick={() => setActiveTab('emails')}
+                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+                style={{
+                  borderColor: activeTab === 'emails' ? 'var(--primary)' : 'transparent',
+                  color: activeTab === 'emails' ? 'var(--primary)' : 'var(--muted)'
+                }}
+              >
+                Emails
               </button>
             </nav>
           </div>
