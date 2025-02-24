@@ -81,7 +81,7 @@ export function CallsTab({
                 setDatePickerRange(dates);
                 onDateChange('both', dates);
               }}
-              className="rounded-md border px-3 py-2 text-sm"
+              className="rounded-md border px-3 py-2 text-sm min-w-[210px]"
               style={{
                 background: 'var(--background)',
                 borderColor: 'var(--border)',

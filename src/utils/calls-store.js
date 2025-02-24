@@ -10,9 +10,25 @@ export class CallsStore {
       },
       meta: {
         lastFetched: null,
-        dateRange: { from: null, to: null }
+        dateRange: this.getDefaultDateRange()
       }
     };
+  }
+
+  getDefaultDateRange() {
+    const now = new Date();
+    now.setHours(23, 59, 59);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6); // -6 to include current day
+    sevenDaysAgo.setHours(0, 0, 0);
+    return {
+      from: Math.floor(sevenDaysAgo.getTime() / 1000),
+      to: Math.floor(now.getTime() / 1000)
+    };
+  }
+
+  getCurrentDateRange() {
+    return this.data.meta.dateRange;
   }
 
   // Update store with new calls data

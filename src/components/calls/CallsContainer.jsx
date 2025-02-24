@@ -14,18 +14,8 @@ export function CallsContainer() {
   const [callsData, setCallsData] = useState(null);
   const [callsAnalytics, setCallsAnalytics] = useState(null);
   const [analyticsProgress, setAnalyticsProgress] = useState(0);
-  // Set initial date range to cover last 7 days including today
-  const [dateRange, setDateRange] = useState(() => {
-    const now = new Date();
-    now.setHours(23, 59, 59);
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 6); // -6 to include current day
-    sevenDaysAgo.setHours(0, 0, 0);
-    return {
-      from: Math.floor(sevenDaysAgo.getTime() / 1000),
-      to: Math.floor(now.getTime() / 1000)
-    };
-  });
+  // Use date range from store
+  const [dateRange, setDateRange] = useState(callsStore.getCurrentDateRange());
   const [pagination, setPagination] = useState({
     page: 1,
     per_page: 20
@@ -36,16 +26,24 @@ export function CallsContainer() {
   });
 
   const fetchCalls = async (forceRefresh = false, customDateRange = null) => {
+    const fetchDateRange = customDateRange || dateRange;
+
+    // If not forcing refresh and we have valid cached data, use it
+    if (!forceRefresh && !callsStore.needsFetch(fetchDateRange)) {
+      const data = callsStore.getCalls({ sorting, pagination });
+      setCallsData(data);
+      if (activeCallsView === 'analytics') {
+        setCallsAnalytics(callsStore.getAnalytics());
+      }
+      setInitialLoading(false);
+      return;
+    }
+
     try {
       setRefreshing(true);
-      
-      // Always set progress callback to show loading progress
       aircallClient.setAnalyticsProgressCallback(setAnalyticsProgress);
 
-      // Use custom date range if provided, otherwise use state
-      const fetchDateRange = customDateRange || dateRange;
-
-      // Fetch data with the same parameters
+      // Fetch new data from API
       const data = await aircallClient.getCalls({
         from: fetchDateRange.from.toString(),
         to: fetchDateRange.to.toString(),
@@ -54,17 +52,14 @@ export function CallsContainer() {
         direction: '',
         status: '',
         user_id: ''
-      }, !forceRefresh);
+      });
       
-      // Update store with new data and date range
+      // Update store and state with new data
       callsStore.updateCalls(data.calls, fetchDateRange);
       setCallsData(data);
-
-      // Get analytics directly from store since data is already fetched
       if (activeCallsView === 'analytics') {
         setCallsAnalytics(callsStore.getAnalytics());
       }
-      
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load calls data. Please try again later.';
@@ -81,17 +76,9 @@ export function CallsContainer() {
   // Use ref to track initial fetch
   const initialFetchDone = useRef(false);
 
-  // Effect to handle initial data fetch
+  // Effect to handle initial data fetch and view updates
   useEffect(() => {
-    if (!initialFetchDone.current && !refreshing) {
-      initialFetchDone.current = true;
-      fetchCalls();
-    }
-  }, [refreshing]);
-
-  // Effect to update view from store when switching views
-  useEffect(() => {
-    if (initialFetchDone.current && !refreshing) {
+    const updateFromStore = () => {
       const data = callsStore.getCalls({
         sorting,
         pagination
@@ -102,8 +89,23 @@ export function CallsContainer() {
         const analytics = callsStore.getAnalytics();
         setCallsAnalytics(analytics);
       }
+    };
+
+    if (!initialFetchDone.current) {
+      // Only fetch if we need new data
+      if (callsStore.needsFetch(dateRange)) {
+        initialFetchDone.current = true;
+        fetchCalls();
+      } else {
+        initialFetchDone.current = true;
+        setInitialLoading(false);
+        updateFromStore();
+      }
+    } else if (!refreshing) {
+      // Just update from store when switching views or changing pagination/sorting
+      updateFromStore();
     }
-  }, [activeCallsView, pagination, sorting, refreshing]);
+  }, [activeCallsView, pagination, sorting, refreshing, dateRange]);
 
   const handleSort = (field) => {
     setSorting(prev => ({
@@ -128,11 +130,12 @@ export function CallsContainer() {
           from: Math.floor(start.getTime() / 1000),
           to: Math.floor(end.setHours(23, 59, 59) / 1000)
         };
-        // First fetch with new range, then update state
-        fetchCalls(true, newRange).then(() => {
-          setDateRange(newRange);
-          setPagination(prev => ({ ...prev, page: 1 }));
-        });
+        // Update store's date range first
+        callsStore.updateCalls([], newRange); // Update date range without changing data
+        setDateRange(newRange);
+        setPagination(prev => ({ ...prev, page: 1 }));
+        // Then fetch with new range
+        fetchCalls(true, newRange);
       }
       return;
     }
