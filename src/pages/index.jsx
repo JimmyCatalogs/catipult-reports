@@ -4,9 +4,10 @@ import { QuickMailAPI } from '../utils/quickmail-api';
 import { LoadingBar } from '../components/LoadingBar';
 import { EmailCampaignTab } from '../components/emails/EmailCampaignTab';
 import { CallsContainer } from '../components/calls/CallsContainer';
+import { AnalyticsTab } from '../components/analytics/AnalyticsTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('calls');
+  const [activeTab, setActiveTab] = useState('analytics');
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -99,6 +100,17 @@ export default function Home() {
               >
                 Emails
               </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className="whitespace-nowrap border-b-2 py-4 px-4 text-sm font-medium rounded-t-lg transition-all"
+                style={{
+                  borderColor: activeTab === 'analytics' ? 'var(--tertiary)' : 'transparent',
+                  color: activeTab === 'analytics' ? 'var(--tertiary)' : 'var(--muted)',
+                  background: activeTab === 'analytics' ? 'var(--tertiary-background)' : 'transparent'
+                }}
+              >
+                Analytics
+              </button>
             </nav>
           </div>
         </div>
@@ -123,6 +135,10 @@ export default function Home() {
 
           {activeTab === 'calls' && (
             <CallsContainer />
+          )}
+
+          {activeTab === 'analytics' && (
+            <AnalyticsTab />
           )}
         </div>
       </div>
