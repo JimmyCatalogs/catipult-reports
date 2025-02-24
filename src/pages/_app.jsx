@@ -31,7 +31,7 @@ export default function App({ Component, pageProps }) {
         className="theme-toggle"
         aria-label="Toggle theme"
       >
-        {theme === "light" ? "🌙" : "☀️"}
+        {theme === "light" ? "☀️" : "🌙"}
       </button>
       <Component {...pageProps} />
     </>

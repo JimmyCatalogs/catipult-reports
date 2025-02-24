@@ -3,35 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --primary: #0070f3;
-  --primary-background: rgba(0, 112, 243, 0.1);
-  --success: #0070f3;
-  --success-background: rgba(0, 112, 243, 0.1);
+  --primary: #079DD3;
+  --primary-background: rgba(7, 157, 211, 0.1);
+  --tertiary: #079DD3;
+  --tertiary-background: rgba(7, 157, 211, 0.1);
+  --success: #079DD3;
+  --success-background: rgba(7, 157, 211, 0.1);
   --warning: #fbbf24;
   --warning-background: rgba(251, 191, 36, 0.1);
   --error: #ef4444;
   --error-background: rgba(239, 68, 68, 0.1);
-  --foreground: #000;
-  --background: #fff;
-  --muted: #6b7280;
+  --foreground: #0A1F50;
+  --background: #FFFFFF;
+  --muted: #079DD3;
   --muted-background: #f3f4f6;
-  --border: #e5e7eb;
+  --border: #079DD3;
 }
 
 [data-theme='dark'] {
-  --primary: #0070f3;
-  --primary-background: rgba(0, 112, 243, 0.1);
-  --success: #0070f3;
-  --success-background: rgba(0, 112, 243, 0.1);
+  --primary: #079DD3;
+  --primary-background: rgba(7, 157, 211, 0.1);
+  --tertiary: #079DD3;
+  --tertiary-background: rgba(7, 157, 211, 0.1);
+  --success: #079DD3;
+  --success-background: rgba(7, 157, 211, 0.1);
   --warning: #fbbf24;
   --warning-background: rgba(251, 191, 36, 0.1);
   --error: #ef4444;
   --error-background: rgba(239, 68, 68, 0.1);
-  --foreground: #fff;
-  --background: #1a1a1a;
-  --muted: #9ca3af;
-  --muted-background: #27272a;
-  --border: #2d2d2d;
+  --foreground: #FFFFFF;
+  --background: #0A1F50;
+  --muted: #079DD3;
+  --muted-background: #142B66;
+  --border: #079DD3;
 }
 
 /* Date Picker Custom Styles */

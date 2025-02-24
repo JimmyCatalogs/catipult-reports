@@ -28,6 +28,24 @@ export function formatAnalyticsDate(timestamp) {
   });
 }
 
+export function getDateRangeString(startDate, endDate) {
+  return `${startDate.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  })} - ${endDate.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  })}`;
+}
+
+export function getLastNDaysRange(days) {
+  const end = new Date();
+  end.setDate(end.getDate() - 1); // yesterday
+  const start = new Date(end);
+  start.setDate(end.getDate() - (days - 1));
+  return { start, end };
+}
+
 export function getWeekRange(sundayDate) {
   const saturday = new Date(sundayDate);
   saturday.setDate(sundayDate.getDate() + 6);

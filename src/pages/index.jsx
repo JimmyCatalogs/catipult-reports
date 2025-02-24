@@ -79,20 +79,22 @@ export default function Home() {
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab('calls')}
-                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+                className="whitespace-nowrap border-b-2 py-4 px-4 text-sm font-medium rounded-t-lg transition-all"
                 style={{
-                  borderColor: activeTab === 'calls' ? 'var(--primary)' : 'transparent',
-                  color: activeTab === 'calls' ? 'var(--primary)' : 'var(--muted)'
+                  borderColor: activeTab === 'calls' ? 'var(--tertiary)' : 'transparent',
+                  color: activeTab === 'calls' ? 'var(--tertiary)' : 'var(--muted)',
+                  background: activeTab === 'calls' ? 'var(--tertiary-background)' : 'transparent'
                 }}
               >
                 Calls
               </button>
               <button
                 onClick={() => setActiveTab('emails')}
-                className="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+                className="whitespace-nowrap border-b-2 py-4 px-4 text-sm font-medium rounded-t-lg transition-all"
                 style={{
-                  borderColor: activeTab === 'emails' ? 'var(--primary)' : 'transparent',
-                  color: activeTab === 'emails' ? 'var(--primary)' : 'var(--muted)'
+                  borderColor: activeTab === 'emails' ? 'var(--tertiary)' : 'transparent',
+                  color: activeTab === 'emails' ? 'var(--tertiary)' : 'var(--muted)',
+                  background: activeTab === 'emails' ? 'var(--tertiary-background)' : 'transparent'
                 }}
               >
                 Emails

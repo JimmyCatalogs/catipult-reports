@@ -1,5 +1,6 @@
 import React from 'react';
 import { EmailCampaignStats } from './EmailCampaignStats';
+import { getLastNDaysRange, getDateRangeString } from '../../utils/dates';
 
 export function EmailCampaignTab({ 
   campaignDataSets, 
@@ -56,18 +57,26 @@ export function EmailCampaignTab({
         </div>
       ) : (
         <>
-          <EmailCampaignStats 
-            data={campaignDataSets.last7} 
-            title="Last 7 Days"
-          />
-          <EmailCampaignStats 
-            data={campaignDataSets.last30} 
-            title="Last 30 Days"
-          />
-          <EmailCampaignStats 
-            data={campaignDataSets.full} 
-            title="Full Campaign"
-          />
+          {(() => {
+            const last7Range = getLastNDaysRange(7);
+            const last30Range = getLastNDaysRange(30);
+            return (
+              <>
+                <EmailCampaignStats 
+                  data={campaignDataSets.last7} 
+                  title={`Last 7 Days (${getDateRangeString(last7Range.start, last7Range.end)})`}
+                />
+                <EmailCampaignStats 
+                  data={campaignDataSets.last30} 
+                  title={`Last 30 Days (${getDateRangeString(last30Range.start, last30Range.end)})`}
+                />
+                <EmailCampaignStats 
+                  data={campaignDataSets.full} 
+                  title="Full Campaign"
+                />
+              </>
+            );
+          })()}
         </>
       )}
     </>

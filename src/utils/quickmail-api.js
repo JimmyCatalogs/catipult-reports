@@ -83,11 +83,16 @@ export class QuickMailAPI {
             name
             appUrl
             stats${statsFilter} {
+              bounces
               clicks
+              delivered
+              deliveredTrackingClicks
+              deliveredTrackingOpens
               opens
               replies
-              repliesPositive
               repliesNegative
+              repliesPositive
+              total
             }
           }
         }
