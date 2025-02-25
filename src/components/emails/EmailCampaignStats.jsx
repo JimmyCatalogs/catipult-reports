@@ -71,7 +71,7 @@ export function EmailCampaignStats({ data, title }) {
         {/* Response Stats */}
         <div>
           <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--foreground)' }}>Response Stats</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {data.campaign.stats?.replies !== undefined && (
               <div style={{ background: 'var(--primary-background)', color: 'var(--primary)' }} className="p-4 rounded-lg">
                 <h3 className="text-sm font-medium mb-2">Total Replies</h3>

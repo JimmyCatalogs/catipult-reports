@@ -93,6 +93,7 @@ export class QuickMailAPI {
               repliesNegative
               repliesPositive
               total
+              unsubscribes
             }
           }
         }
