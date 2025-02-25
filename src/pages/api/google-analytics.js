@@ -1,9 +1,19 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
+// Debug: Log the formatted private key
+const formattedKey = process.env.GOOGLE_ANALYTICS_PRIVATE_KEY?.replace(/\\n/g, '\n');
+console.log('Formatted private key:', {
+  raw: process.env.GOOGLE_ANALYTICS_PRIVATE_KEY,
+  formatted: formattedKey,
+  hasNewlines: formattedKey?.includes('\n'),
+  beginsWithHeader: formattedKey?.startsWith('-----BEGIN PRIVATE KEY-----'),
+  endsWithFooter: formattedKey?.endsWith('-----END PRIVATE KEY-----\n')
+});
+
 const analyticsDataClient = new BetaAnalyticsDataClient({
   credentials: {
     client_email: process.env.GOOGLE_ANALYTICS_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_ANALYTICS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    private_key: formattedKey,
     project_id: process.env.GOOGLE_ANALYTICS_PROJECT_ID
   },
 });
