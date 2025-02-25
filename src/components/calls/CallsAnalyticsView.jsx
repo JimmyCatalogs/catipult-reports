@@ -75,7 +75,7 @@ export function CallsAnalyticsView({
       {/* Overall Stats */}
       <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6">
         <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Overall Statistics</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div style={{ background: 'var(--primary-background)', color: 'var(--primary)' }} className="p-4 rounded-lg">
             <h3 className="text-sm font-medium mb-2">Total Calls</h3>
             <p className="text-2xl font-bold">{callsAnalytics?.totalCalls || 0}</p>

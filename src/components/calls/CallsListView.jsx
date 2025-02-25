@@ -9,8 +9,8 @@ export function CallsListView({
   onPageChange
 }) {
   return (
-    <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6">
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
         <table className="min-w-full divide-y" style={{ borderColor: 'var(--border)' }}>
           <thead style={{ background: 'var(--muted-background)' }}>
             <tr>

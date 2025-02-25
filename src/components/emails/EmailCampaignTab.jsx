@@ -9,7 +9,7 @@ export function EmailCampaignTab({
   onRefresh 
 }) {
   return (
-    <>
+    <div className="pb-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
@@ -79,6 +79,6 @@ export function EmailCampaignTab({
           })()}
         </>
       )}
-    </>
+    </div>
   );
 }

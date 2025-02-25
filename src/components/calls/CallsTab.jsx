@@ -30,9 +30,9 @@ export function CallsTab({
   ]);
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div className="pb-8">
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
             Call Analytics
           </h1>
@@ -59,7 +59,7 @@ export function CallsTab({
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <button
             onClick={onRefresh}
             className="px-4 py-2 rounded-md text-sm font-medium"
@@ -71,7 +71,7 @@ export function CallsTab({
           >
             {refreshing ? 'Refreshing...' : 'Refresh Data'}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <label className="text-sm font-medium" style={{ color: 'var(--muted)' }}>Date Range</label>
             <DatePicker
               selectsRange={true}
@@ -81,7 +81,7 @@ export function CallsTab({
                 setDatePickerRange(dates);
                 onDateChange('both', dates);
               }}
-              className="rounded-md border px-3 py-2 text-sm min-w-[210px]"
+              className="rounded-md border px-3 py-2 text-sm w-full sm:w-auto"
               style={{
                 background: 'var(--background)',
                 borderColor: 'var(--border)',
@@ -120,6 +120,6 @@ export function CallsTab({
           analyticsProgress={analyticsProgress}
         />
       )}
-    </>
+    </div>
   );
 }
