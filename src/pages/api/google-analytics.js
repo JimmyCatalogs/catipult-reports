@@ -1,7 +1,10 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
-// Debug: Log the formatted private key
-const formattedKey = process.env.GOOGLE_ANALYTICS_PRIVATE_KEY?.replace(/\\n/g, '\n');
+// Clean and format the private key
+const formattedKey = process.env.GOOGLE_ANALYTICS_PRIVATE_KEY
+  ?.replace(/^"/, '') // Remove leading quote
+  ?.replace(/"$/, '') // Remove trailing quote
+  ?.replace(/\\n/g, '\n'); // Replace \n with actual newlines
 console.log('Formatted private key:', {
   raw: process.env.GOOGLE_ANALYTICS_PRIVATE_KEY,
   formatted: formattedKey,
@@ -49,7 +52,30 @@ export default async function handler(req, res) {
   
   console.log('GA API Request:', { metric, startDate, endDate });
 
+  // Debug: Check private key formatting
+  const keyDebugInfo = {
+    hasNewlines: formattedKey?.includes('\n'),
+    beginsWithHeader: formattedKey?.startsWith('-----BEGIN PRIVATE KEY-----'),
+    endsWithFooter: formattedKey?.endsWith('-----END PRIVATE KEY-----\n'),
+    keyLength: formattedKey?.length,
+    // Only show first and last 20 chars to avoid exposing the full key
+    preview: formattedKey ? `${formattedKey.slice(0, 20)}...${formattedKey.slice(-20)}` : null
+  };
+
   try {
+    // If this is a debug request, return the key info
+    if (metric === 'debug') {
+      return res.json({ 
+        debug: keyDebugInfo,
+        envVars: {
+          hasClientEmail: !!process.env.GOOGLE_ANALYTICS_CLIENT_EMAIL,
+          hasPrivateKey: !!process.env.GOOGLE_ANALYTICS_PRIVATE_KEY,
+          hasProjectId: !!process.env.GOOGLE_ANALYTICS_PROJECT_ID,
+          hasPropertyId: !!process.env.GOOGLE_ANALYTICS_PROPERTY_ID
+        }
+      });
+    }
+
     switch (metric) {
       case 'pageviews': {
         const [response] = await analyticsDataClient.runReport({
