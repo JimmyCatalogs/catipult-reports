@@ -52,6 +52,7 @@ export function AnalyticsTab() {
     pageViews: [],
     userMetrics: null,
     topPages: [],
+    sourceMedium: [],
   });
 
   const analyticsClient = new GoogleAnalyticsAPI();
@@ -59,51 +60,96 @@ export function AnalyticsTab() {
   const fetchAnalyticsData = async (start, end) => {
     setLoading(true);
     setRefreshing(true);
+    
+    // Format dates as YYYY-MM-DD for GA4
+    const startDate = start.toISOString().split('T')[0];
+    const endDate = end.toISOString().split('T')[0];
+    
+    console.log('Fetching analytics data for range:', { startDate, endDate });
+    
+    // Initialize with empty data
+    const newAnalyticsData = {
+      pageViews: [],
+      userMetrics: null,
+      topPages: [],
+      sourceMedium: []
+    };
+    
+    let hasDateRangeError = false;
+    let hasOtherError = false;
+    
     try {
-      // Format dates as YYYY-MM-DD for GA4
-      const startDate = start.toISOString().split('T')[0];
-      const endDate = end.toISOString().split('T')[0];
-      
-      console.log('Fetching analytics data for range:', { startDate, endDate });
-      
-      const [pageViews, userMetrics, topPages] = await Promise.all([
-        analyticsClient.getPageViews(startDate, endDate),
-        analyticsClient.getUserMetrics(startDate, endDate),
-        analyticsClient.getTopPages(startDate, endDate)
-      ]);
-
-      setAnalyticsData({
-        pageViews,
-        userMetrics,
-        topPages
-      });
-      setError(null);
-      setDateRangeError(null); // Clear date range error on successful data fetch
+      newAnalyticsData.pageViews = await analyticsClient.getPageViews(startDate, endDate);
     } catch (err) {
-      // Check if this is the specific Google Analytics DATE_TOO_EARLY error
-      if (err.message?.includes('Analytics data is only available from February 18')) {
-        setDateRangeError('Analytics data is only available from February 18, 2025 onwards');
-        setAnalyticsData({
-          pageViews: [],
-          userMetrics: {
-            metricValues: [
-              { value: '0' },
-              { value: '0' },
-              { value: '0' }
-            ]
-          },
-          topPages: [],
-        });
-        setError(null);
+      console.error('Error fetching page views:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
       } else {
-        setError('Failed to fetch analytics data. Please try again later.');
-        setDateRangeError(null);
-        console.error('Error fetching analytics data:', err);
+        hasOtherError = true;
       }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
+    
+    try {
+      newAnalyticsData.userMetrics = await analyticsClient.getUserMetrics(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching user metrics:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+      // Provide default user metrics if there's an error
+      if (!newAnalyticsData.userMetrics) {
+        newAnalyticsData.userMetrics = {
+          metricValues: [
+            { value: '0' },
+            { value: '0' },
+            { value: '0' }
+          ]
+        };
+      }
+    }
+    
+    try {
+      newAnalyticsData.topPages = await analyticsClient.getTopPages(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching top pages:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    try {
+      newAnalyticsData.sourceMedium = await analyticsClient.getSourceMedium(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching source/medium data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    // Update state with the data we were able to fetch
+    setAnalyticsData(newAnalyticsData);
+    
+    // Handle errors
+    if (hasDateRangeError) {
+      setDateRangeError('Analytics data is only available from February 18, 2025 onwards');
+      setError(null);
+    } else if (hasOtherError) {
+      setError('Some analytics data could not be loaded. Please try again later.');
+      setDateRangeError(null);
+    } else {
+      setError(null);
+      setDateRangeError(null);
+    }
+    
+    // Always reset loading state
+    setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -124,10 +170,22 @@ export function AnalyticsTab() {
   };
 
   const pageViewsChartData = {
-    labels: analyticsData.pageViews.map(row => formatGADate(row.dimensionValues[0].value)),
+    labels: analyticsData.pageViews
+      .slice() // Create a copy to avoid mutating the original array
+      .sort((a, b) => {
+        // Sort by date (YYYYMMDD format)
+        return a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value);
+      })
+      .map(row => formatGADate(row.dimensionValues[0].value)),
     datasets: [{
       label: 'Page Views',
-      data: analyticsData.pageViews.map(row => parseInt(row.metricValues[0].value)),
+      data: analyticsData.pageViews
+        .slice() // Create a copy to avoid mutating the original array
+        .sort((a, b) => {
+          // Sort by date (YYYYMMDD format)
+          return a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value);
+        })
+        .map(row => parseInt(row.metricValues[0].value)),
       borderColor: 'rgb(75, 192, 192)',
       tension: 0.1
     }]
@@ -142,6 +200,19 @@ export function AnalyticsTab() {
       label: 'Views',
       data: analyticsData.topPages.map(row => parseInt(row.metricValues[0].value)),
       backgroundColor: 'rgba(53, 162, 235, 0.5)',
+    }]
+  };
+
+  const sourceMediumChartData = {
+    labels: analyticsData.sourceMedium.map(row => {
+      const sessionSource = row.dimensionValues[0].value || '(not set)';
+      const sessionMedium = row.dimensionValues[1].value || '(not set)';
+      return `${sessionSource} / ${sessionMedium}`;
+    }),
+    datasets: [{
+      label: 'Users',
+      data: analyticsData.sourceMedium.map(row => parseInt(row.metricValues[0].value)),
+      backgroundColor: 'rgba(75, 192, 192, 0.5)',
     }]
   };
 
@@ -255,6 +326,35 @@ export function AnalyticsTab() {
                 options={{
                   indexAxis: 'y',
                   maintainAspectRatio: false,
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {!dateRangeError && (
+        <div className="bg-white p-4 rounded-lg shadow mt-6">
+          <h3 className="text-lg font-semibold mb-4">Session Traffic Sources</h3>
+          <div className="h-[400px]">
+            {analyticsData.sourceMedium.length > 0 && (
+              <Bar 
+                data={sourceMediumChartData}
+                options={{
+                  indexAxis: 'y',
+                  maintainAspectRatio: false,
+                  plugins: {
+                    tooltip: {
+                      callbacks: {
+                        title: function(context) {
+                          return context[0].label;
+                        },
+                        label: function(context) {
+                          return `Users: ${context.raw}`;
+                        }
+                      }
+                    }
+                  }
                 }}
               />
             )}

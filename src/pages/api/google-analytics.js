@@ -87,12 +87,17 @@ export default async function handler(req, res) {
           metrics: [{ name: 'screenPageViews' }],
           dimensions: [{ name: 'date' }],
         });
-        // If no data returned for dates before analytics was set up
+        
+        console.log('Page Views API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
         if (!response.rows?.length) {
-          return res.status(400).json({ 
-            error: 'DATE_TOO_EARLY',
-            message: 'Analytics data is only available from February 18, 2025 onwards'
-          });
+          return res.json([]);
         }
         return res.json(response.rows);
       }
@@ -110,11 +115,22 @@ export default async function handler(req, res) {
             { name: 'activeUsers' }
           ],
         });
-        // If no data returned for dates before analytics was set up
+        
+        console.log('Users API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return default user metrics
         if (!response.rows?.length) {
-          return res.status(400).json({ 
-            error: 'DATE_TOO_EARLY',
-            message: 'Analytics data is only available from February 18, 2025 onwards'
+          return res.json({
+            metricValues: [
+              { value: '0' },
+              { value: '0' },
+              { value: '0' }
+            ]
           });
         }
         return res.json(response.rows[0]);
@@ -137,12 +153,53 @@ export default async function handler(req, res) {
           ],
           limit: 10,
         });
-        // If no data returned for dates before analytics was set up
+        
+        console.log('Top Pages API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
         if (!response.rows?.length) {
-          return res.status(400).json({ 
-            error: 'DATE_TOO_EARLY',
-            message: 'Analytics data is only available from February 18, 2025 onwards'
-          });
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
+
+      case 'sourceMedium': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensions: [
+            { name: 'sessionSource' },
+            { name: 'sessionMedium' }
+          ],
+          orderBys: [
+            {
+              metric: { metricName: 'totalUsers' },
+              desc: true,
+            },
+          ],
+          limit: 20,
+        });
+        
+        console.log('Source/Medium API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          // Return empty array instead of error
+          return res.json([]);
         }
         return res.json(response.rows);
       }
