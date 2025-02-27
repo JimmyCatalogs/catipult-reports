@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { QuickMailAPI } from '../utils/quickmail-api';
 import { LoadingBar } from '../components/LoadingBar';
-import { EmailCampaignTab } from '../components/emails/EmailCampaignTab';
+import { EmailsContainer } from '../components/emails/EmailsContainer';
 import { CallsContainer } from '../components/calls/CallsContainer';
 import { AnalyticsTab } from '../components/analytics/AnalyticsTab';
 
@@ -11,56 +11,6 @@ export default function Home() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [campaignDataSets, setCampaignDataSets] = useState({
-    last7: null,
-    last30: null,
-    full: null
-  });
-
-  const fetchAllCampaignData = async (forceRefresh = false) => {
-    setRefreshing(true);
-    try {
-      const client = new QuickMailAPI(
-        process.env.NEXT_PUBLIC_QUICKMAIL_API_KEY,
-        process.env.NEXT_PUBLIC_QUICKMAIL_CAMPAIGN_ID
-      );
-      
-      const [last7Data, last30Data, fullData] = await Promise.all([
-        client.getCampaignDetails(7),
-        client.getCampaignDetails(30),
-        client.getCampaignDetails(null)
-      ]);
-
-      setCampaignDataSets({
-        last7: last7Data,
-        last30: last30Data,
-        full: fullData
-      });
-      setError(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign data. Please try again later.';
-      setError(errorMessage);
-      console.error('Error fetching campaign data:', err);
-    } finally {
-      setInitialLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // Initial data fetch
-  useEffect(() => {
-    if (activeTab === 'emails') {
-      fetchAllCampaignData();
-    }
-  }, [activeTab]);
-
-  // Set up refresh interval
-  useEffect(() => {
-    if (activeTab === 'emails') {
-      const interval = setInterval(() => fetchAllCampaignData(true), 5 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [activeTab]);
 
   return (
     <>
@@ -125,12 +75,7 @@ export default function Home() {
         
         <div className="max-w-6xl mx-auto px-8 pt-4">
           {activeTab === 'emails' && (
-            <EmailCampaignTab
-              campaignDataSets={campaignDataSets}
-              initialLoading={initialLoading}
-              refreshing={refreshing}
-              onRefresh={() => fetchAllCampaignData(true)}
-            />
+            <EmailsContainer />
           )}
 
           {activeTab === 'calls' && (
