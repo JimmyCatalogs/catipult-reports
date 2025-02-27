@@ -11,6 +11,13 @@ export class CallsStore {
       meta: {
         lastFetched: null,
         dateRange: this.getDefaultDateRange()
+      },
+      // Store for AircallAI data
+      aiData: {
+        transcription: {},
+        sentiments: {},
+        topics: {},
+        summary: {}
       }
     };
   }
@@ -337,6 +344,58 @@ export class CallsStore {
            currentRange.to !== dateRange.to;
   }
 
+  // AircallAI methods
+  
+  // Store transcription data for a call
+  updateCallTranscription(callId, data) {
+    this.data.aiData.transcription[callId] = data;
+  }
+  
+  // Store sentiments data for a call
+  updateCallSentiments(callId, data) {
+    this.data.aiData.sentiments[callId] = data;
+  }
+  
+  // Store topics data for a call
+  updateCallTopics(callId, data) {
+    this.data.aiData.topics[callId] = data;
+  }
+  
+  // Store summary data for a call
+  updateCallSummary(callId, data) {
+    this.data.aiData.summary[callId] = data;
+  }
+  
+  // Get transcription data for a call
+  getCallTranscription(callId) {
+    return this.data.aiData.transcription[callId];
+  }
+  
+  // Get sentiments data for a call
+  getCallSentiments(callId) {
+    return this.data.aiData.sentiments[callId];
+  }
+  
+  // Get topics data for a call
+  getCallTopics(callId) {
+    return this.data.aiData.topics[callId];
+  }
+  
+  // Get summary data for a call
+  getCallSummary(callId) {
+    return this.data.aiData.summary[callId];
+  }
+  
+  // Check if we have AI data for a call
+  hasAIData(callId) {
+    return {
+      transcription: !!this.data.aiData.transcription[callId],
+      sentiments: !!this.data.aiData.sentiments[callId],
+      topics: !!this.data.aiData.topics[callId],
+      summary: !!this.data.aiData.summary[callId]
+    };
+  }
+
   // Clear all data
   clear() {
     this.data = {
@@ -347,6 +406,12 @@ export class CallsStore {
       meta: {
         lastFetched: null,
         dateRange: { from: null, to: null }
+      },
+      aiData: {
+        transcription: {},
+        sentiments: {},
+        topics: {},
+        summary: {}
       }
     };
   }

@@ -173,10 +173,11 @@ export function CallsContainer() {
       dateRange={dateRange}
       onRefresh={() => fetchCalls(true)}
       onSort={handleSort}
-      onFilter={handleFilter}
-      onPageChange={handlePageChange}
-      onDateChange={handleDateChange}
-      analyticsProgress={analyticsProgress}
+          onFilter={handleFilter}
+          onPageChange={handlePageChange}
+          onDateChange={handleDateChange}
+          analyticsProgress={analyticsProgress}
+          aircallClient={aircallClient}
     />
   );
 }

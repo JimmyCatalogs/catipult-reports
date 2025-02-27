@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { formatUnixTimestamp } from '../../utils/dates';
+import { CallAIDetails } from './CallAIDetails';
 
 // Dropdown filter component
 function FilterDropdown({ options, value, onChange, placeholder }) {
@@ -119,9 +120,14 @@ export function CallsListView({
   filters,
   onSort,
   onFilter,
-  onPageChange
+  onPageChange,
+  aircallClient
 }) {
   const [showAnsweredOnly, setShowAnsweredOnly] = useState(false);
+  const [expandedCallId, setExpandedCallId] = useState(null);
+  const [callsWithTranscript, setCallsWithTranscript] = useState({});
+  const [fetchingTranscripts, setFetchingTranscripts] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState(0);
   
   // Extract unique values for filter dropdowns
   const [filterOptions, setFilterOptions] = useState({
@@ -168,20 +174,110 @@ export function CallsListView({
       recording: options.recording
     });
   }, [callsData]);
+
+  // No pre-checking for transcripts - we'll check on button click
   return (
     <div style={{ background: 'var(--background)' }} className="rounded-lg shadow-sm p-6">
-      <div className="mb-4">
-        <button
-          onClick={toggleAnsweredFilter}
-          className="px-4 py-2 rounded-md text-sm font-medium"
-          style={{
-            background: showAnsweredOnly ? 'var(--primary)' : 'var(--background)',
-            color: showAnsweredOnly ? 'white' : 'var(--muted)',
-            border: '1px solid var(--border)'
-          }}
-        >
-          {showAnsweredOnly ? 'Show all calls' : 'Show answered calls only'}
-        </button>
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <button
+            onClick={toggleAnsweredFilter}
+            className="px-4 py-2 rounded-md text-sm font-medium"
+            style={{
+              background: showAnsweredOnly ? 'var(--primary)' : 'var(--background)',
+              color: showAnsweredOnly ? 'white' : 'var(--muted)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            {showAnsweredOnly ? 'Show all calls' : 'Show answered calls only'}
+          </button>
+          
+          <button
+            onClick={async () => {
+              if (fetchingTranscripts || !callsData?.calls?.length) return;
+              
+              setFetchingTranscripts(true);
+              setFetchProgress(0);
+              const transcriptAvailability = { ...callsWithTranscript };
+              
+              // Process calls in batches to avoid rate limiting (60 per minute)
+              const batchSize = 10; // Process 10 calls at a time
+              const delay = 10000; // Wait 10 seconds between batches (60 calls per minute = 1 call per second)
+              const totalCalls = callsData.calls.length;
+              let processedCalls = 0;
+              
+              for (let i = 0; i < totalCalls; i += batchSize) {
+                const batch = callsData.calls.slice(i, i + batchSize);
+                
+                // Process each call in the batch in parallel
+                await Promise.all(
+                  batch.map(async (call) => {
+                    try {
+                      // Skip if we already know the transcript status
+                      if (transcriptAvailability[call.id] !== undefined) {
+                        processedCalls++;
+                        setFetchProgress(processedCalls / totalCalls);
+                        return;
+                      }
+                      
+                      // Try to fetch the transcript
+                      const response = await aircallClient.getCallTranscription(call.id);
+                      // If we get here without an error, the transcript exists
+                      transcriptAvailability[call.id] = response;
+                      console.log(`Transcript available for call ${call.id}`);
+                    } catch (error) {
+                      // If we get a 404, the transcript doesn't exist
+                      transcriptAvailability[call.id] = null;
+                      console.log(`No transcript for call ${call.id}`);
+                    } finally {
+                      processedCalls++;
+                      setFetchProgress(processedCalls / totalCalls);
+                    }
+                  })
+                );
+                
+                // Update state after each batch
+                setCallsWithTranscript({ ...transcriptAvailability });
+                
+                // Wait before processing the next batch to avoid rate limiting
+                if (i + batchSize < totalCalls) {
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                }
+              }
+              
+              setFetchingTranscripts(false);
+            }}
+            className="px-4 py-2 rounded-md text-sm font-medium"
+            style={{
+              background: 'var(--primary)',
+              color: 'white',
+              opacity: fetchingTranscripts ? 0.7 : 1,
+              cursor: fetchingTranscripts ? 'not-allowed' : 'pointer'
+            }}
+            disabled={fetchingTranscripts}
+          >
+            {fetchingTranscripts ? 'Fetching Transcripts...' : 'Fetch Transcripts'}
+          </button>
+        </div>
+        
+        {fetchingTranscripts && (
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                Checking transcripts... {Math.round(fetchProgress * 100)}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="h-2.5 rounded-full" 
+                style={{ 
+                  width: `${Math.round(fetchProgress * 100)}%`,
+                  background: 'var(--primary)'
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto -mx-4 sm:mx-0">
         <table className="min-w-full divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -253,45 +349,85 @@ export function CallsListView({
                   />
                 </div>
               </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                <span>AI</span>
+              </th>
             </tr>
           </thead>
           <tbody style={{ background: 'var(--background)', borderColor: 'var(--border)' }} className="divide-y">
             {callsData?.calls.map((call) => (
-              <tr key={call.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
-                  {formatUnixTimestamp(call.started_at)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span style={{
-                    background: call.direction === 'inbound' ? 'var(--success-background)' : 'var(--primary-background)',
-                    color: call.direction === 'inbound' ? 'var(--success)' : 'var(--primary)'
-                  }} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                    {call.direction}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
-                  {call.duration}s
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
-                  {call.raw_digits}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
-                  {call.user?.name || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {call.recording && (
-                    <a
-                      href={call.recording}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm"
-                      style={{ color: 'var(--primary)' }}
-                    >
-                      Listen
-                    </a>
-                  )}
-                </td>
-              </tr>
+              <React.Fragment key={call.id}>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
+                    {formatUnixTimestamp(call.started_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span style={{
+                      background: call.direction === 'inbound' ? 'var(--success-background)' : 'var(--primary-background)',
+                      color: call.direction === 'inbound' ? 'var(--success)' : 'var(--primary)'
+                    }} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                      {call.direction}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
+                    {call.duration}s
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
+                    {call.raw_digits}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--foreground)' }}>
+                    {call.user?.name || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {call.recording && (
+                      <a
+                        href={call.recording}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm"
+                        style={{ color: 'var(--primary)' }}
+                      >
+                        Listen
+                      </a>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {fetchingTranscripts ? (
+                      <div className="animate-pulse h-5 w-5 rounded-full bg-gray-200"></div>
+                    ) : callsWithTranscript[call.id] ? (
+                      <button
+                        onClick={() => {
+                          console.log('Call data:', call);
+                          setExpandedCallId(expandedCallId === call.id ? null : call.id);
+                        }}
+                        className="p-1 rounded-full hover:bg-opacity-10 hover:bg-gray-500"
+                        style={{ color: expandedCallId === call.id ? 'var(--primary)' : 'var(--muted)' }}
+                        title="View Transcription"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    ) : callsWithTranscript[call.id] === null ? (
+                      <span className="text-xs italic" style={{ color: 'var(--muted)' }}>No transcript</span>
+                    ) : (
+                      <span className="text-xs italic" style={{ color: 'var(--muted)' }}>Click "Fetch Transcripts"</span>
+                    )}
+                  </td>
+                </tr>
+                {expandedCallId === call.id && callsWithTranscript[call.id] && (
+                  <tr>
+                    <td colSpan="7" className="px-0 py-0">
+                      <CallAIDetails 
+                        call={call} 
+                        aircallClient={aircallClient} 
+                        onClose={() => setExpandedCallId(null)} 
+                        transcription={callsWithTranscript[call.id]}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

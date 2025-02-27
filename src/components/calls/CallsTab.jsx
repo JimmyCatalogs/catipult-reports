@@ -23,6 +23,7 @@ export function CallsTab({
   onPageChange,
   onDateChange,
   analyticsProgress,
+  aircallClient,
 }) {
   const [datePickerRange, setDatePickerRange] = useState([
     new Date(dateRange.from * 1000),
@@ -114,6 +115,7 @@ export function CallsTab({
           onSort={onSort}
           onFilter={onFilter}
           onPageChange={onPageChange}
+          aircallClient={aircallClient}
         />
       ) : (
         <CallsAnalyticsView 

@@ -1,6 +1,13 @@
 import { callsStore } from './calls-store';
 
 export class AircallAPI {
+  // AircallAI endpoints
+  static AI_ENDPOINTS = {
+    TRANSCRIPTION: 'calls/:call_id/transcription',
+    SENTIMENTS: 'calls/:call_id/sentiments',
+    TOPICS: 'calls/:call_id/topics',
+    SUMMARY: 'calls/:call_id/summary'
+  };
   constructor(apiId) {
     this.apiId = apiId;
     this.analyticsProgress = {
@@ -175,6 +182,82 @@ export class AircallAPI {
     // If we need to fetch, use getCalls which will update the store
     await this.getCalls(params, false);
     return callsStore.getAnalytics();
+  }
+
+  // AircallAI methods
+  async getCallTranscription(callId) {
+    return this.fetchAIData(AircallAPI.AI_ENDPOINTS.TRANSCRIPTION.replace(':call_id', callId));
+  }
+
+  async getCallSentiments(callId) {
+    return this.fetchAIData(AircallAPI.AI_ENDPOINTS.SENTIMENTS.replace(':call_id', callId));
+  }
+
+  async getCallTopics(callId) {
+    return this.fetchAIData(AircallAPI.AI_ENDPOINTS.TOPICS.replace(':call_id', callId));
+  }
+
+  async getCallSummary(callId) {
+    return this.fetchAIData(AircallAPI.AI_ENDPOINTS.SUMMARY.replace(':call_id', callId));
+  }
+
+  // Helper method to fetch AircallAI data
+  async fetchAIData(path, retryCount = 0) {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 2000; // 2 seconds
+
+    try {
+      const url = `/api/aircall-proxy?path=${path}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+      
+      // Handle 404 errors (no transcript available)
+      if (response.status === 404) {
+        throw new Error('Resource not found (404)');
+      }
+      
+      const responseText = await response.text();
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
+
+      // Handle rate limiting with retries
+      if (response.status === 429 || (response.status === 403 && data.message?.toLowerCase().includes('rate limit'))) {
+        if (retryCount < MAX_RETRIES) {
+          const delay = BASE_DELAY * Math.pow(2, retryCount); // Exponential backoff
+          console.log(`Rate limited. Retrying in ${delay/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.fetchAIData(path, retryCount + 1);
+        } else {
+          throw new Error('Rate limit exceeded after maximum retries');
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to fetch AI data: ${response.statusText}`);
+      }
+
+      return data;
+    } catch (error) {
+      if (error.message.includes('Rate limit') || error.message.includes('rate limit')) {
+        if (retryCount < MAX_RETRIES) {
+          const delay = BASE_DELAY * Math.pow(2, retryCount);
+          console.log(`Error: ${error.message}. Retrying in ${delay/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.fetchAIData(path, retryCount + 1);
+        }
+      }
+      throw error;
+    }
   }
 
   // Helper method to fetch a single page of calls
