@@ -23,7 +23,10 @@ export class AircallAPI {
         filters: {
           direction: params.direction,
           status: params.status,
-          user_id: params.user_id
+          user_id: params.user_id,
+          raw_digits: params.raw_digits,
+          recording: params.recording,
+          answered: params.answered
         },
         sorting: {
           order: params.order,
@@ -42,7 +45,10 @@ export class AircallAPI {
         filters: {
           direction: params.direction,
           status: params.status,
-          user_id: params.user_id
+          user_id: params.user_id,
+          raw_digits: params.raw_digits,
+          recording: params.recording,
+          answered: params.answered
         },
         sorting: {
           order: params.order,
@@ -73,7 +79,10 @@ export class AircallAPI {
         filters: {
           direction: params.direction,
           status: params.status,
-          user_id: params.user_id
+          user_id: params.user_id,
+          raw_digits: params.raw_digits,
+          recording: params.recording,
+          answered: params.answered
         },
         sorting: {
           order: params.order,

@@ -112,6 +112,7 @@ export function CallsTab({
           pagination={pagination}
           filters={filters}
           onSort={onSort}
+          onFilter={onFilter}
           onPageChange={onPageChange}
         />
       ) : (

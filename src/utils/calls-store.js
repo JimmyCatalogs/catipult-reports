@@ -47,8 +47,8 @@ export class CallsStore {
     this.data.meta.dateRange = dateRange;
   }
 
-  // Get sorted and paginated calls
-  getCalls({ sorting, pagination }) {
+  // Get sorted, filtered, and paginated calls
+  getCalls({ sorting, pagination, filters = {} }) {
     // Get all calls and filter by date range
     let allCalls = this.data.calls.allIds.map(id => this.data.calls.byId[id]);
     const { from, to } = this.data.meta.dateRange;
@@ -59,8 +59,54 @@ export class CallsStore {
       return callTime >= from && callTime <= to;
     });
 
+    // Apply filters
+    if (filters) {
+      allCalls = this.filterCalls(allCalls, filters);
+    }
+
     let sortedCalls = this.sortCalls(allCalls, sorting);
     return this.paginateCalls(sortedCalls, pagination);
+  }
+
+  // Filter calls based on provided filters
+  filterCalls(calls, filters) {
+    return calls.filter(call => {
+      // Check each filter
+      for (const [key, value] of Object.entries(filters)) {
+        if (!value) continue; // Skip empty filters
+        
+        // Handle special cases
+        if (key === 'user_id' && value) {
+          // For user filtering, check if user exists and matches id
+          if (!call.user || call.user.id !== value) {
+            return false;
+          }
+          continue;
+        }
+        
+        if (key === 'recording' && value) {
+          // For recording, check if it exists
+          const hasRecording = !!call.recording;
+          if (value === 'yes' && !hasRecording) return false;
+          if (value === 'no' && hasRecording) return false;
+          continue;
+        }
+        
+        if (key === 'answered' && value === 'yes') {
+          // For answered calls, check if answered_at exists and is not null
+          if (!call.answered_at) return false;
+          continue;
+        }
+        
+        // For other fields, do a case-insensitive string comparison
+        const callValue = call[key]?.toString().toLowerCase();
+        if (!callValue || !callValue.includes(value.toLowerCase())) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
   }
 
   // Sort calls based on current sorting
