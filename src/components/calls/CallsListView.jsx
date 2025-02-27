@@ -350,7 +350,7 @@ export function CallsListView({
                 </div>
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-                <span>AI</span>
+                <span>Transcripts</span>
               </th>
             </tr>
           </thead>
