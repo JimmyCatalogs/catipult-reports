@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { EmailCampaignStats } from './EmailCampaignStats';
 import { getLastNDaysRange, getDateRangeString } from '../../utils/dates';
 
@@ -8,6 +8,8 @@ export function EmailCampaignTab({
   refreshing, 
   onRefresh 
 }) {
+  const [showPercentages, setShowPercentages] = useState(false);
+  
   return (
     <div className="pb-8">
       <div className="flex items-center justify-between mb-8">
@@ -16,17 +18,29 @@ export function EmailCampaignTab({
             Email Campaign Analytics
           </h1>
         </div>
-        <button
-          onClick={onRefresh}
-          className="px-4 py-2 rounded-md text-sm font-medium"
-          style={{
-            background: 'var(--primary)',
-            color: 'white'
-          }}
-          disabled={refreshing}
-        >
-          {refreshing ? 'Refreshing...' : 'Refresh Data'}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowPercentages(!showPercentages)}
+            className="px-4 py-2 rounded-md text-sm font-medium"
+            style={{
+              background: 'var(--primary)',
+              color: 'white'
+            }}
+          >
+            {showPercentages ? 'Percentage View' : 'Absolute View'}
+          </button>
+          <button
+            onClick={onRefresh}
+            className="px-4 py-2 rounded-md text-sm font-medium"
+            style={{
+              background: 'var(--primary)',
+              color: 'white'
+            }}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+          </button>
+        </div>
       </div>
 
 
@@ -51,14 +65,17 @@ export function EmailCampaignTab({
                 <EmailCampaignStats 
                   data={campaignDataSets.last7} 
                   title={`Last 7 Days (${getDateRangeString(last7Range.start, last7Range.end)})`}
+                  showPercentages={showPercentages}
                 />
                 <EmailCampaignStats 
                   data={campaignDataSets.last30} 
                   title={`Last 30 Days (${getDateRangeString(last30Range.start, last30Range.end)})`}
+                  showPercentages={showPercentages}
                 />
                 <EmailCampaignStats 
                   data={campaignDataSets.full} 
                   title="Full Campaign"
+                  showPercentages={showPercentages}
                 />
               </>
             );
