@@ -5,6 +5,7 @@ import { LoadingBar } from '../components/LoadingBar';
 import { EmailsContainer } from '../components/emails/EmailsContainer';
 import { CallsContainer } from '../components/calls/CallsContainer';
 import { AnalyticsTab } from '../components/analytics/AnalyticsTab';
+import { LinkedInAdsTab } from '../components/linkedin/LinkedInAdsTab';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('analytics');
@@ -61,6 +62,17 @@ export default function Home() {
               >
                 Analytics
               </button>
+              <button
+                onClick={() => setActiveTab('linkedin')}
+                className="whitespace-nowrap border-b-2 py-4 px-4 text-sm font-medium rounded-t-lg transition-all"
+                style={{
+                  borderColor: activeTab === 'linkedin' ? 'var(--tertiary)' : 'transparent',
+                  color: activeTab === 'linkedin' ? 'var(--tertiary)' : 'var(--muted)',
+                  background: activeTab === 'linkedin' ? 'var(--tertiary-background)' : 'transparent'
+                }}
+              >
+                LinkedIn Ads
+              </button>
             </nav>
           </div>
         </div>
@@ -84,6 +96,10 @@ export default function Home() {
 
           {activeTab === 'analytics' && (
             <AnalyticsTab />
+          )}
+
+          {activeTab === 'linkedin' && (
+            <LinkedInAdsTab />
           )}
         </div>
       </div>
