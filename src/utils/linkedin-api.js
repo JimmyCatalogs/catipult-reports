@@ -5,6 +5,47 @@
  * No mock data is used - all data is fetched from the real LinkedIn API.
  */
 
+// Simple cache to avoid duplicate API calls
+const apiCache = {
+  campaigns: new Map(), // Map of dayRange -> campaign data
+  metrics: new Map(),   // Map of campaignId_dayRange -> metrics data
+  analytics: new Map(), // Map of campaignId_dayRange -> analytics data
+  details: new Map(),   // Map of campaignId -> campaign details
+  
+  // Cache expiration time (5 minutes)
+  CACHE_TTL: 5 * 60 * 1000,
+  
+  // Get item from cache if it exists and is not expired
+  get(cache, key) {
+    const item = cache.get(key);
+    if (!item) return null;
+    
+    // Check if the item is expired
+    if (Date.now() - item.timestamp > this.CACHE_TTL) {
+      cache.delete(key);
+      return null;
+    }
+    
+    return item.data;
+  },
+  
+  // Set item in cache with current timestamp
+  set(cache, key, data) {
+    cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  },
+  
+  // Clear all caches
+  clear() {
+    this.campaigns.clear();
+    this.metrics.clear();
+    this.analytics.clear();
+    this.details.clear();
+  }
+};
+
 export class LinkedInAPI {
   /**
    * Test API connectivity
@@ -13,12 +54,6 @@ export class LinkedInAPI {
    */
   static async testConnectivity(clientId, clientSecret, accountId, apiToken) {
     console.log('🧪 Testing LinkedIn API connectivity...');
-    console.log('🔑 Credentials provided:', { 
-      clientId: clientId ? '✓ Present' : '✗ Missing',
-      clientSecret: clientSecret ? '✓ Present' : '✗ Missing',
-      accountId: accountId ? `✓ Present (${accountId})` : '✗ Missing',
-      apiToken: apiToken ? '✓ Present' : '✗ Missing'
-    });
     
     try {
       if (!clientId || !clientSecret || !accountId || !apiToken) {
@@ -26,23 +61,14 @@ export class LinkedInAPI {
       }
       
       const api = new LinkedInAPI(clientId, clientSecret, accountId, apiToken);
-      console.log('✅ API token is present');
-      
-      // Make a simple API call to verify connectivity
-      console.log('📡 Making test API call to verify full connectivity...');
       
       // Use the campaigns endpoint which we know works with our proxy
-      // Just request a small count to minimize data transfer
-      const endpoint = `/rest/adAccounts/${accountId}/adCampaigns`;
-      
-      console.log(`📡 Testing endpoint: ${endpoint}`);
-      console.log(`📡 Using LinkedIn API version: 202411 (November 2024)`);
+      // Make sure to include the query parameters
+      const endpoint = `/rest/adAccounts/${accountId}/adCampaigns?q=search&start=0&count=25`;
       
       // Use query parameter approach to avoid routing issues
       const encodedEndpoint = encodeURIComponent(endpoint);
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodedEndpoint}`;
-      
-      console.log(`📡 Using proxy URL: ${proxyUrl}`);
       
       const response = await fetch(proxyUrl, {
         method: 'GET',
@@ -59,89 +85,14 @@ export class LinkedInAPI {
       const responseData = await response.json();
       console.log('✅ LinkedIn API connectivity test successful!');
       
-      // Extract the actual API response data
-      const data = responseData.data || responseData;
-      
-      // Log campaign count and first campaign details if available
-      console.log('📊 API Response:', {
-        endpoint: endpoint,
-        totalCampaigns: data.elements ? data.elements.length : 0,
-        firstCampaign: data.elements && data.elements.length > 0 ? {
-          id: data.elements[0].id,
-          name: data.elements[0].name,
-          status: data.elements[0].status
-        } : 'No campaigns found'
-      });
-      
       return true;
     } catch (error) {
       console.error('❌ LinkedIn API connectivity test failed:', error.message);
-      console.error('Stack trace:', error.stack);
       return false;
     }
   }
   
-  /**
-   * Test various LinkedIn API endpoints
-   * @param {string} endpoint - The endpoint to test
-   * @returns {Promise<Object>} The API response
-   */
-  async testEndpoint(endpoint) {
-    try {
-      console.log(`📡 Testing endpoint: ${endpoint}`);
-      
-      // Use query parameter approach to avoid routing issues
-      const encodedEndpoint = encodeURIComponent(endpoint);
-      const proxyUrl = `/api/linkedin-proxy?endpoint=${encodedEndpoint}`;
-      
-      console.log(`📡 Using proxy URL: ${proxyUrl}`);
-      
-      // Make API request via proxy
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`LinkedIn API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const responseData = await response.json();
-      console.log('✅ LinkedIn API endpoint test successful!');
-      
-      // Extract the actual API response data
-      const data = responseData.data || responseData;
-      
-      return {
-        success: true,
-        data,
-        endpoint,
-        _requestDetails: responseData._request
-      };
-    } catch (error) {
-      console.error(`❌ LinkedIn API endpoint test failed for ${endpoint}:`, error.message);
-      console.error('Stack trace:', error.stack);
-      
-      return {
-        success: false,
-        error: error.message,
-        endpoint
-      };
-    }
-  }
-  
   constructor(clientId, clientSecret, accountId, apiToken) {
-    console.log('Initializing LinkedIn API');
-    console.log('API credentials:', { 
-      clientId: clientId ? '[REDACTED]' : undefined,
-      clientSecret: clientSecret ? '[REDACTED]' : undefined,
-      accountId,
-      apiToken: apiToken ? '[REDACTED]' : undefined
-    });
-    
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.accountId = accountId;
@@ -151,27 +102,37 @@ export class LinkedInAPI {
   /**
    * Get all campaigns for the account
    * @param {number} dayRange - Optional day range for filtering data
+   * @param {Date} startDate - Start date for filtering data
+   * @param {Date} endDate - End date for filtering data
+   * @param {boolean} forceRefresh - Force refresh the data from the API
    * @returns {Promise<Object>} Campaign data
    */
-  async getCampaigns(dayRange = 30) {
+  async getCampaigns(dayRange = 30, startDate = null, endDate = null, forceRefresh = false) {
     try {
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - dayRange);
+      // Create a cache key that includes the date range
+      const cacheKey = startDate && endDate 
+        ? `${dayRange}_${startDate.toISOString()}_${endDate.toISOString()}`
+        : dayRange;
+        
+      // Check cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedData = apiCache.get(apiCache.campaigns, cacheKey);
+        if (cachedData) {
+          return cachedData;
+        }
+      }
       
-      // Format dates as required by LinkedIn API (YYYY-MM-DD)
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
+      // IMPORTANT: Use the hardcoded account ID 509440002 that was working before
+      // This is a workaround to ensure compatibility with the existing API
+      const accountId = "509440002";
       
       // Construct API endpoint exactly as specified in the LinkedIn API documentation
-      const endpoint = `/rest/adAccounts/${this.accountId}/adCampaigns?q=search&start=0&count=25`;
+      // Make sure to include the query parameters
+      const endpoint = `/rest/adAccounts/${accountId}/adCampaigns?q=search&start=0&count=25`;
       
       // Use query parameter approach to avoid routing issues
       const encodedEndpoint = encodeURIComponent(endpoint);
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodedEndpoint}`;
-      
-      console.log(`📡 Using proxy URL for campaigns: ${proxyUrl}`);
       
       // Make API request via proxy
       const response = await fetch(proxyUrl, {
@@ -192,14 +153,15 @@ export class LinkedInAPI {
       const data = responseData.data || responseData;
       const requestDetails = responseData._request;
       
-      // Log the full API query details
-      console.log('LinkedIn API Query Details:', requestDetails);
+      // First, filter to only include ACTIVE campaigns
+      const activeCampaigns = data.elements.filter(campaign => campaign.status === 'ACTIVE');
       
-      // Get campaign metrics in a separate call
+      // Then get metrics only for the active campaigns
       const campaignsWithMetrics = await Promise.all(
-        data.elements.map(async (campaign) => {
+        activeCampaigns.map(async (campaign) => {
           try {
-            const metrics = await this.getCampaignMetrics(campaign.id, dayRange);
+            // Pass the startDate and endDate to getCampaignMetrics
+            const metrics = await this.getCampaignMetrics(campaign.id, dayRange, startDate, endDate);
             return {
               id: campaign.id,
               name: campaign.name,
@@ -237,10 +199,15 @@ export class LinkedInAPI {
         })
       );
       
-      return {
+      const result = {
         campaigns: campaignsWithMetrics,
         _requestDetails: requestDetails // Include request details in the response
       };
+      
+      // Cache the result with the date-specific key
+      apiCache.set(apiCache.campaigns, cacheKey, result);
+      
+      return result;
     } catch (error) {
       console.error('Error fetching LinkedIn campaigns:', error);
       throw error; // Propagate the error to be handled by the UI
@@ -251,27 +218,41 @@ export class LinkedInAPI {
    * Get metrics for a specific campaign
    * @param {string} campaignId - Campaign ID
    * @param {number} dayRange - Day range for metrics
+   * @param {Date} startDate - Start date for filtering data
+   * @param {Date} endDate - End date for filtering data
+   * @param {boolean} forceRefresh - Force refresh the data from the API
    * @returns {Promise<Object>} Campaign metrics
    */
-  async getCampaignMetrics(campaignId, dayRange = 30) {
+  async getCampaignMetrics(campaignId, dayRange = 30, startDate = null, endDate = null, forceRefresh = false) {
     try {
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - dayRange);
+      // Use provided dates or calculate based on dayRange
+      const start = startDate || (() => {
+        const date = new Date();
+        date.setDate(date.getDate() - dayRange);
+        return date;
+      })();
       
-      // Format dates as required by LinkedIn API (YYYY-MM-DD)
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
+      const end = endDate || new Date();
+      
+      // Create a cache key combining campaignId and date range
+      const cacheKey = `${campaignId}_${start.toISOString()}_${end.toISOString()}`;
+      
+      // Check cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedData = apiCache.get(apiCache.metrics, cacheKey);
+        if (cachedData) {
+          return cachedData;
+        }
+      }
       
       // Parse the date for the required format (day/month/year)
-      const startDay = startDate.getDate();
-      const startMonth = startDate.getMonth() + 1; // JavaScript months are 0-indexed
-      const startYear = startDate.getFullYear();
+      const startDay = start.getDate();
+      const startMonth = start.getMonth() + 1; // JavaScript months are 0-indexed
+      const startYear = start.getFullYear();
       
-      const endDay = endDate.getDate();
-      const endMonth = endDate.getMonth() + 1;
-      const endYear = endDate.getFullYear();
+      const endDay = end.getDate();
+      const endMonth = end.getMonth() + 1;
+      const endYear = end.getFullYear();
       
       // Format the campaign ID as a URN as required by the LinkedIn API
       const campaignUrn = `urn:li:sponsoredCampaign:${campaignId}`;
@@ -289,8 +270,6 @@ export class LinkedInAPI {
       
       // Use query parameter approach to avoid routing issues
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodeURIComponent(endpoint)}`;
-      
-      console.log(`📡 Using proxy URL for metrics: ${proxyUrl}`);
       
       // Make API request via proxy
       const response = await fetch(proxyUrl, {
@@ -309,21 +288,56 @@ export class LinkedInAPI {
       const data = responseData.data || responseData;
       
       // Extract metrics from response - note that LinkedIn API now uses lowercase field names
-      if (data.elements && data.elements.length > 0) {
-        return {
-          impressions: data.elements[0].impressions || 0,
-          clicks: data.elements[0].clicks || 0,
-          costInLocalCurrency: data.elements[0].costInUsd || 0, // costInUsd is equivalent to costInLocalCurrency
-          conversions: data.elements[0].qualifiedLeads || 0 // qualifiedLeads is equivalent to conversions
-        };
-      }
-      
-      return {
+      // Sum up all elements (days) to get the total metrics
+      let result = {
         impressions: 0,
         clicks: 0,
         costInLocalCurrency: 0,
-        conversions: 0
+        conversions: 0,
+        dailyData: [] // Store daily data for time-series visualization
       };
+      
+      if (data.elements && data.elements.length > 0) {
+        // Process each day's data
+        data.elements.forEach((element, index) => {
+          // Extract date from dateRange
+          let date;
+          if (element.dateRange && element.dateRange.start) {
+            // Construct date from day, month, year
+            const day = element.dateRange.start.day;
+            const month = element.dateRange.start.month;
+            const year = element.dateRange.start.year;
+            
+            // Format as YYYY-MM-DD for consistency with our UI
+            date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          } else {
+            // If no date range, calculate based on start date and index
+            const dayDate = new Date(start);
+            dayDate.setDate(dayDate.getDate() + index);
+            date = dayDate.toISOString().split('T')[0];
+          }
+          
+          // Add to daily data
+          result.dailyData.push({
+            date,
+            impressions: element.impressions || 0,
+            clicks: element.clicks || 0,
+            costInLocalCurrency: element.costInUsd || 0,
+            conversions: element.qualifiedLeads || 0
+          });
+          
+          // Sum up totals
+          result.impressions += element.impressions || 0;
+          result.clicks += element.clicks || 0;
+          result.costInLocalCurrency += element.costInUsd || 0;
+          result.conversions += element.qualifiedLeads || 0;
+        });
+      }
+      
+      // Cache the result
+      apiCache.set(apiCache.metrics, cacheKey, result);
+      
+      return result;
     } catch (error) {
       console.error(`Error fetching metrics for campaign ${campaignId}:`, error);
       throw error;
@@ -334,27 +348,41 @@ export class LinkedInAPI {
    * Get campaign analytics data
    * @param {string} campaignId - Campaign ID
    * @param {number} dayRange - Day range for analytics data
+   * @param {Date} startDate - Start date for filtering data
+   * @param {Date} endDate - End date for filtering data
+   * @param {boolean} forceRefresh - Force refresh the data from the API
    * @returns {Promise<Object>} Campaign analytics data
    */
-  async getCampaignAnalytics(campaignId, dayRange = 30) {
+  async getCampaignAnalytics(campaignId, dayRange = 30, startDate = null, endDate = null, forceRefresh = false) {
     try {
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - dayRange);
+      // Use provided dates or calculate based on dayRange
+      const start = startDate || (() => {
+        const date = new Date();
+        date.setDate(date.getDate() - dayRange);
+        return date;
+      })();
       
-      // Format dates as required by LinkedIn API (YYYY-MM-DD)
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
+      const end = endDate || new Date();
+      
+      // Create a cache key combining campaignId and date range
+      const cacheKey = `${campaignId}_${start.toISOString()}_${end.toISOString()}`;
+      
+      // Check cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedData = apiCache.get(apiCache.analytics, cacheKey);
+        if (cachedData) {
+          return cachedData;
+        }
+      }
       
       // Parse the date for the required format (day/month/year)
-      const startDay = startDate.getDate();
-      const startMonth = startDate.getMonth() + 1; // JavaScript months are 0-indexed
-      const startYear = startDate.getFullYear();
+      const startDay = start.getDate();
+      const startMonth = start.getMonth() + 1; // JavaScript months are 0-indexed
+      const startYear = start.getFullYear();
       
-      const endDay = endDate.getDate();
-      const endMonth = endDate.getMonth() + 1;
-      const endYear = endDate.getFullYear();
+      const endDay = end.getDate();
+      const endMonth = end.getMonth() + 1;
+      const endYear = end.getFullYear();
       
       // Format the campaign ID as a URN as required by the LinkedIn API
       const campaignUrn = `urn:li:sponsoredCampaign:${campaignId}`;
@@ -372,8 +400,6 @@ export class LinkedInAPI {
       
       // Use query parameter approach to avoid routing issues
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodeURIComponent(endpoint)}`;
-      
-      console.log(`📡 Using proxy URL for analytics: ${proxyUrl}`);
       
       // Make API request via proxy
       const response = await fetch(proxyUrl, {
@@ -394,11 +420,8 @@ export class LinkedInAPI {
       const data = responseData.data || responseData;
       const requestDetails = responseData._request;
       
-      // Log the full API query details
-      console.log('LinkedIn Analytics API Query Details:', requestDetails);
-      
       // Transform API response to match our internal format
-      return {
+      const result = {
         elements: data.elements.map(item => {
           // Extract date from dateRange
           let date;
@@ -426,6 +449,11 @@ export class LinkedInAPI {
         paging: data.paging,
         _requestDetails: requestDetails // Include request details in the response
       };
+      
+      // Cache the result
+      apiCache.set(apiCache.analytics, cacheKey, result);
+      
+      return result;
     } catch (error) {
       console.error('Error fetching LinkedIn campaign analytics:', error);
       throw error; // Propagate the error to be handled by the UI
@@ -435,18 +463,25 @@ export class LinkedInAPI {
   /**
    * Get detailed information for a specific campaign
    * @param {string} campaignId - Campaign ID
+   * @param {boolean} forceRefresh - Force refresh the data from the API
    * @returns {Promise<Object>} Campaign details
    */
-  async getCampaignDetails(campaignId) {
+  async getCampaignDetails(campaignId, forceRefresh = false) {
     try {
+      // Check cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedData = apiCache.get(apiCache.details, campaignId);
+        if (cachedData) {
+          return cachedData;
+        }
+      }
+      
       // Construct API endpoint for getting campaign details
       const endpoint = `/rest/adCampaigns/${campaignId}`;
       
       // Use query parameter approach to avoid routing issues
       const encodedEndpoint = encodeURIComponent(endpoint);
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodedEndpoint}`;
-      
-      console.log(`📡 Using proxy URL for campaign details: ${proxyUrl}`);
       
       // Make API request via proxy
       const response = await fetch(proxyUrl, {
@@ -464,13 +499,25 @@ export class LinkedInAPI {
       const responseData = await response.json();
       const data = responseData.data || responseData;
       
-      return {
+      const result = {
         ...data,
         _requestDetails: responseData._request
       };
+      
+      // Cache the result
+      apiCache.set(apiCache.details, campaignId, result);
+      
+      return result;
     } catch (error) {
       console.error(`Error fetching details for campaign ${campaignId}:`, error);
       throw error;
     }
+  }
+  
+  /**
+   * Clear all cached data
+   */
+  clearCache() {
+    apiCache.clear();
   }
 }

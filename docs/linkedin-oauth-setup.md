@@ -42,14 +42,14 @@ This document provides step-by-step instructions for setting up the LinkedIn OAu
    ```
    The number after "accounts/" is your Account ID.
 
-## Step 5: Generate a Refresh Token
+## Step 5: Generate an API Token
 
-Generate a refresh token using LinkedIn's OAuth 2.0 flow. You can do this through:
+Generate an API token using LinkedIn's OAuth 2.0 flow. You can do this through:
 - LinkedIn's developer tools
 - A third-party OAuth client like Postman
 - Your own implementation of the OAuth flow
 
-The refresh token will be used to automatically generate access tokens for API calls.
+The API token will be used to authenticate API calls to the LinkedIn Marketing API.
 
 ## Step 6: Update Environment Variables
 
@@ -59,7 +59,7 @@ The refresh token will be used to automatically generate access tokens for API c
    NEXT_PUBLIC_LINKEDIN_CLIENT_ID=your_client_id
    NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET=your_client_secret
    NEXT_PUBLIC_LINKEDIN_ACCOUNT_ID=your_account_id
-   NEXT_PUBLIC_LINKEDIN_REFRESH_TOKEN=your_refresh_token
+   NEXT_PUBLIC_LINKEDIN_API_TOKEN=your_api_token
    ```
 3. Save the file
 
@@ -71,22 +71,46 @@ The refresh token will be used to automatically generate access tokens for API c
    ```
 2. Navigate to the LinkedIn Ads tab to verify the integration is working
 
-## Refresh Token Management
+## API Endpoints
 
-LinkedIn refresh tokens eventually expire. When this happens:
-1. Generate a new refresh token using your preferred method
-2. Update the `NEXT_PUBLIC_LINKEDIN_REFRESH_TOKEN` value in your `.env.local` file
+The application uses the following LinkedIn Marketing API endpoints:
+
+### Campaign Data
+
+```
+/rest/adAccounts/{accountId}/adCampaigns?q=search&start=0&count=25
+```
+
+This endpoint retrieves a list of campaigns for the specified account. The application filters the results to show only ACTIVE campaigns.
+
+### Campaign Analytics
+
+```
+/rest/adAnalytics?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=(start:(year:YYYY,month:MM,day:DD),end:(year:YYYY,month:MM,day:DD))&campaigns=List(urn%3Ali%3AsponsoredCampaign%3AXXXXXXXX)&fields=impressions,clicks,costInUsd,qualifiedLeads
+```
+
+This endpoint retrieves analytics data for a specific campaign. Note the specific URL format requirements:
+
+- The `dateRange` parameter is not URL-encoded
+- For the `campaigns` parameter, only the URN inside the `List()` wrapper is URL-encoded (the colons in the URN are replaced with `%3A`)
+- The `fields` parameter specifies the metrics to retrieve: impressions, clicks, costInUsd, qualifiedLeads
+
+## API Token Management
+
+LinkedIn API tokens eventually expire. When this happens:
+1. Generate a new API token using your preferred method
+2. Update the `NEXT_PUBLIC_LINKEDIN_API_TOKEN` value in your `.env.local` file
 3. Restart the application
 
 ## Troubleshooting
 
-### Token Refresh Issues
+### Authentication Issues
 
-If you encounter issues with token refresh:
+If you encounter authentication issues:
 
-1. Ensure your Client ID, Client Secret, and Refresh Token are correct
+1. Ensure your Client ID, Client Secret, and API Token are correct
 2. Check that your app has the necessary scopes enabled
-3. Generate a new refresh token
+3. Generate a new API token if the current one has expired
 
 ### API Access Issues
 
@@ -96,7 +120,16 @@ If you encounter issues accessing the LinkedIn Marketing API:
 2. Verify that your app has the necessary API permissions
 3. Check the LinkedIn Marketing API documentation for any rate limits or restrictions
 
+### URL Format Issues
+
+If you encounter ILLEGAL_ARGUMENT errors:
+
+1. Ensure the dateRange parameter is not URL-encoded
+2. Ensure only the URN inside the List() wrapper is URL-encoded
+3. Check the example URL format in the Campaign Analytics section above
+
 ## Additional Resources
 
 - [LinkedIn Marketing API Documentation](https://learn.microsoft.com/en-us/linkedin/marketing/)
 - [LinkedIn OAuth 2.0 Documentation](https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow)
+- [LinkedIn REST API Documentation](https://learn.microsoft.com/en-us/linkedin/rest/)
