@@ -325,12 +325,16 @@ export class CallsStore {
     // Convert to array, sort by date, and format dates using our utility
     return Object.entries(stats)
       .sort(([a], [b]) => parseInt(a) - parseInt(b))
-      .map(([timestamp, stat]) => ({
-        ...stat,
-        date: viewType === 'weekly'
-          ? `Week of ${formatAnalyticsDate(parseInt(timestamp))}`
-          : formatAnalyticsDate(parseInt(timestamp))
-      }));
+      .map(([timestamp, stat]) => {
+        // Create a proper Date object from the timestamp
+        const date = new Date(parseInt(timestamp) * 1000);
+        return {
+          ...stat,
+          date: viewType === 'weekly'
+            ? `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+      });
   }
 
   // Check if we need to fetch new data based on date range

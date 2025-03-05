@@ -212,10 +212,16 @@ export function LinkedInCampaignStats({ data, title, refreshTrigger }) {
       return;
     }
     
-    // Generate daily data for the selected campaign
     setLoadingDailyData(true);
     
-    // Generate daily data based on the date range
+    // Use the actual daily data from the API if available
+    if (selectedCampaignForTimeSeries.metrics && selectedCampaignForTimeSeries.metrics.dailyData) {
+      setCampaignDailyData(selectedCampaignForTimeSeries.metrics.dailyData);
+      setLoadingDailyData(false);
+      return;
+    }
+    
+    // Fallback to generating daily data if not available from API
     const dailyData = generateDailyDataForDateRange(
       selectedCampaignForTimeSeries, 
       dateRange.startDate, 

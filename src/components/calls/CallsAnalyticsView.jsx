@@ -26,10 +26,7 @@ export function CallsAnalyticsView({
 }) {
   // Prepare chart data with daily view
   const chartData = {
-    labels: callsAnalytics?.timeBasedStats?.map(stat => {
-      const date = new Date(stat.date);
-      return date.toLocaleDateString();
-    }) || [],
+    labels: callsAnalytics?.timeBasedStats?.map(stat => stat.date) || [],
     datasets: [
       {
         label: 'Total Calls',
