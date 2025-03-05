@@ -7,6 +7,22 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Line } from 'react-chartjs-2';
 
+// Tooltip component for displaying information on hover
+const Tooltip = ({ text }) => (
+  <div className="group relative inline-block">
+    <span className="ml-1 cursor-help text-sm" style={{ color: 'var(--muted)' }}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </span>
+    <div className="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded py-1 px-2 -mt-2 left-6 w-48">
+      {text}
+    </div>
+  </div>
+);
+
 export function LinkedInAdsTab() {
   // Default to last 7 days
   const defaultDateRange = getLastNDaysRange(7);
@@ -30,6 +46,7 @@ export function LinkedInAdsTab() {
   const [selectedMetric, setSelectedMetric] = useState('impressions');
   const [aggregatedData, setAggregatedData] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showCalculatedMetrics, setShowCalculatedMetrics] = useState(false);
 
   const fetchCampaignData = async (forceRefresh = false) => {
     setRefreshing(true);
@@ -132,22 +149,104 @@ export function LinkedInAdsTab() {
           impressions: 0,
           clicks: 0,
           costInLocalCurrency: 0,
-          ctr: 0
+          conversions: 0,
+          oneClickLeads: 0,
+          ctr: 0,
+          cpm: 0,
+          cpc: 0,
+          cpr: 0,
+          costPerLead: 0
         };
         
         analyticsData.elements.forEach(item => {
           totals.impressions += item.impressions || 0;
           totals.clicks += item.clicks || 0;
-          totals.costInLocalCurrency += item.costInLocalCurrency || 0;
+          // Parse costInLocalCurrency as a float to ensure numeric addition
+          totals.costInLocalCurrency += parseFloat(item.costInLocalCurrency || 0);
+          totals.conversions += item.conversions || 0;
+          totals.oneClickLeads += item.oneClickLeads || 0;
         });
         
-        // Calculate CTR
-        totals.ctr = totals.impressions > 0 
-          ? ((totals.clicks / totals.impressions) * 100).toFixed(2) + '%' 
-          : '0.00%';
+        // Calculate metrics with maximum safeguards against NaN values
+        try {
+          // Calculate CTR (Click-Through Rate)
+          if (totals.impressions > 0) {
+            const ctrValue = (totals.clicks / totals.impressions) * 100;
+            if (!isNaN(ctrValue) && isFinite(ctrValue)) {
+              totals.ctr = ctrValue.toFixed(2) + '%';
+            } else {
+              totals.ctr = '0.00%';
+            }
+          } else {
+            totals.ctr = '0.00%';
+          }
+          
+          // Calculate CPM (Cost per 1,000 Impressions)
+          if (totals.impressions > 0) {
+            const cpmValue = (totals.costInLocalCurrency / totals.impressions) * 1000;
+            if (!isNaN(cpmValue) && isFinite(cpmValue)) {
+              totals.cpm = cpmValue.toFixed(2);
+            } else {
+              totals.cpm = 0;
+            }
+          } else {
+            totals.cpm = 0;
+          }
+          
+          // Calculate CPC (Cost per Click)
+          if (totals.clicks > 0) {
+            const cpcValue = totals.costInLocalCurrency / totals.clicks;
+            if (!isNaN(cpcValue) && isFinite(cpcValue)) {
+              totals.cpc = cpcValue.toFixed(2);
+            } else {
+              totals.cpc = 0;
+            }
+          } else {
+            totals.cpc = 0;
+          }
+          
+          // Calculate CPR (Cost per Result) - using conversions as results
+          const totalResults = totals.conversions || 0;
+          if (totalResults > 0) {
+            const cprValue = totals.costInLocalCurrency / totalResults;
+            if (!isNaN(cprValue) && isFinite(cprValue)) {
+              totals.cpr = cprValue.toFixed(2);
+            } else {
+              totals.cpr = 0;
+            }
+          } else {
+            totals.cpr = 0;
+          }
+          
+          // Calculate Cost per Lead (now based only on oneClickLeads)
+          if (totals.oneClickLeads > 0) {
+            const costPerLeadValue = totals.costInLocalCurrency / totals.oneClickLeads;
+            if (!isNaN(costPerLeadValue) && isFinite(costPerLeadValue)) {
+              totals.costPerLead = costPerLeadValue.toFixed(2);
+            } else {
+              totals.costPerLead = 0;
+            }
+          } else {
+            totals.costPerLead = 0;
+          }
+        } catch (error) {
+          console.error('Error calculating metrics:', error);
+          // Set default values in case of calculation errors
+          totals.ctr = '0.00%';
+          totals.cpm = 0;
+          totals.cpc = 0;
+          totals.cpr = 0;
+          totals.costPerLead = 0;
+        }
         
         // Format cost
         totals.formattedCost = `$${parseFloat(totals.costInLocalCurrency).toFixed(2)}`;
+        
+        // Format other monetary values
+        totals.formattedCpm = `$${parseFloat(totals.cpm).toFixed(2)}`;
+        totals.formattedCpc = `$${parseFloat(totals.cpc).toFixed(2)}`;
+        totals.formattedCpr = `$${parseFloat(totals.cpr).toFixed(2)}`;
+        totals.formattedCostPerLead = `$${parseFloat(totals.costPerLead).toFixed(2)}`;
         
         setAggregatedData(totals);
       }
@@ -359,17 +458,55 @@ export function LinkedInAdsTab() {
           {/* Aggregated Totals Table */}
           {aggregatedData && (
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
-                Campaign Totals
-              </h3>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
+                  Campaign Totals
+                </h3>
+                <button
+                  onClick={() => setShowCalculatedMetrics(!showCalculatedMetrics)}
+                  className="px-3 py-1 rounded-md text-sm font-medium"
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'white'
+                  }}
+                >
+                  {showCalculatedMetrics ? 'Hide Calculated Metrics' : 'Show Calculated Metrics'}
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y" style={{ borderColor: 'var(--border)' }}>
                   <thead>
                     <tr>
                       <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Impressions</th>
                       <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Clicks</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>CTR</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                        CTR
+                        <Tooltip text="Click-Through Rate: Percentage of chargeable clicks relative to impressions (clicks divided by impressions)" />
+                      </th>
                       <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Cost</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Qualified Leads</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>One-Click Leads</th>
+                      
+                      {showCalculatedMetrics && (
+                        <>
+                          <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                            CPM
+                            <Tooltip text="Cost per 1,000 Impressions: Total spent on your ads divided by 1,000 impressions" />
+                          </th>
+                          <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                            CPC
+                            <Tooltip text="Cost per Click: Total spent on your ads divided by total clicks" />
+                          </th>
+                          <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                            CPR
+                            <Tooltip text="Cost per Result: Average cost per result. Total spent on your campaign divided by the number of results based on your objective" />
+                          </th>
+                          <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                            Cost per Lead
+                            <Tooltip text="Amount spent per lead collected" />
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -378,6 +515,17 @@ export function LinkedInAdsTab() {
                       <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.clicks.toLocaleString()}</td>
                       <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.ctr}</td>
                       <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.formattedCost}</td>
+                      <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{(aggregatedData.conversions || 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{(aggregatedData.oneClickLeads || 0).toLocaleString()}</td>
+                      
+                      {showCalculatedMetrics && (
+                        <>
+                          <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.formattedCpm}</td>
+                          <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.formattedCpc}</td>
+                          <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.formattedCpr}</td>
+                          <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{aggregatedData.formattedCostPerLead}</td>
+                        </>
+                      )}
                     </tr>
                   </tbody>
                 </table>
@@ -387,9 +535,21 @@ export function LinkedInAdsTab() {
           
           {/* Daily Data Table */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
-              Daily Performance
-            </h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
+                Daily Performance
+              </h3>
+              <button
+                onClick={() => setShowCalculatedMetrics(!showCalculatedMetrics)}
+                className="px-3 py-1 rounded-md text-sm font-medium"
+                style={{
+                  background: 'var(--primary)',
+                  color: 'white'
+                }}
+              >
+                {showCalculatedMetrics ? 'Hide Calculated Metrics' : 'Show Calculated Metrics'}
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y" style={{ borderColor: 'var(--border)' }}>
                 <thead>
@@ -397,18 +557,98 @@ export function LinkedInAdsTab() {
                     <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Date</th>
                     <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Impressions</th>
                     <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Clicks</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>CTR</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                      CTR
+                      <Tooltip text="Click-Through Rate: Percentage of chargeable clicks relative to impressions (clicks divided by impressions)" />
+                    </th>
                     <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Cost</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>Qualified Leads</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>One-Click Leads</th>
+                    
+                    {showCalculatedMetrics && (
+                      <>
+                        <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                          CPM
+                          <Tooltip text="Cost per 1,000 Impressions: Total spent on your ads divided by 1,000 impressions" />
+                        </th>
+                        <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                          CPC
+                          <Tooltip text="Cost per Click: Total spent on your ads divided by total clicks" />
+                        </th>
+                        <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                          CPR
+                          <Tooltip text="Cost per Result: Average cost per result. Total spent on your campaign divided by the number of results based on your objective" />
+                        </th>
+                        <th className="px-4 py-2 text-left text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                          Cost per Lead
+                          <Tooltip text="Amount spent per lead collected" />
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {selectedCampaign.metrics.dailyData && selectedCampaign.metrics.dailyData.map((item, index) => {
                     const impressions = item.impressions || 0;
                     const clicks = item.clicks || 0;
+                    const costInLocalCurrency = item.costInLocalCurrency || 0;
+                    const qualifiedLeads = item.conversions || 0;
+                    const oneClickLeads = item.oneClickLeads || 0;
+                    
+                    // Calculate metrics
                     const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) + '%' : '0.00%';
-                    const cost = item.costInLocalCurrency 
-                      ? `$${parseFloat(item.costInLocalCurrency).toFixed(2)}` 
-                      : '$0.00';
+                    const cost = `$${parseFloat(costInLocalCurrency).toFixed(2)}`;
+                    
+                    // Calculate additional metrics with maximum safeguards
+                    let cpm = '$0.00';
+                    let cpc = '$0.00';
+                    let cpr = '$0.00';
+                    let costPerLead = '$0.00';
+                    
+                    try {
+                      // CPM calculation
+                      if (impressions > 0) {
+                        const cpmValue = (costInLocalCurrency / impressions) * 1000;
+                        // Check if result is a valid number
+                        if (!isNaN(cpmValue) && isFinite(cpmValue)) {
+                          cpm = `$${cpmValue.toFixed(2)}`;
+                        }
+                      }
+                      
+                      // CPC calculation
+                      if (clicks > 0) {
+                        const cpcValue = costInLocalCurrency / clicks;
+                        // Check if result is a valid number
+                        if (!isNaN(cpcValue) && isFinite(cpcValue)) {
+                          cpc = `$${cpcValue.toFixed(2)}`;
+                        }
+                      }
+                      
+                      // CPR calculation
+                      if (qualifiedLeads > 0) {
+                        const cprValue = costInLocalCurrency / qualifiedLeads;
+                        // Check if result is a valid number
+                        if (!isNaN(cprValue) && isFinite(cprValue)) {
+                          cpr = `$${cprValue.toFixed(2)}`;
+                        }
+                      }
+                      
+                      // Cost per lead calculation (based only on oneClickLeads)
+                      if (oneClickLeads > 0) {
+                        const costPerLeadValue = costInLocalCurrency / oneClickLeads;
+                        // Check if result is a valid number
+                        if (!isNaN(costPerLeadValue) && isFinite(costPerLeadValue)) {
+                          costPerLead = `$${costPerLeadValue.toFixed(2)}`;
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error calculating metrics:', error);
+                      // Ensure default values in case of errors
+                      cpm = '$0.00';
+                      cpc = '$0.00';
+                      cpr = '$0.00';
+                      costPerLead = '$0.00';
+                    }
 
                     return (
                       <tr key={index}>
@@ -417,6 +657,17 @@ export function LinkedInAdsTab() {
                         <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{clicks.toLocaleString()}</td>
                         <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{ctr}</td>
                         <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{cost}</td>
+                        <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{qualifiedLeads.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{oneClickLeads.toLocaleString()}</td>
+                        
+                        {showCalculatedMetrics && (
+                          <>
+                            <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{cpm}</td>
+                            <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{cpc}</td>
+                            <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{cpr}</td>
+                            <td className="px-4 py-2 text-sm" style={{ color: 'var(--foreground)' }}>{costPerLead}</td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
@@ -446,6 +697,13 @@ export function LinkedInAdsTab() {
                   <option value="impressions">Impressions</option>
                   <option value="clicks">Clicks</option>
                   <option value="costInLocalCurrency">Cost</option>
+                  <option value="conversions">Qualified Leads</option>
+                  <option value="oneClickLeads">One-Click Leads</option>
+                  <option value="ctr">CTR</option>
+                  <option value="cpm">CPM</option>
+                  <option value="cpc">CPC</option>
+                  <option value="cpr">CPR</option>
+                  <option value="costPerLead">Cost per Lead</option>
                 </select>
               </div>
             </div>
@@ -457,14 +715,60 @@ export function LinkedInAdsTab() {
                   datasets: [
                     {
                       label: selectedMetric === 'impressions' ? 'Impressions' : 
-                             selectedMetric === 'clicks' ? 'Clicks' : 'Cost',
-                      data: selectedCampaign.metrics.dailyData.map(item => item[selectedMetric] || 0),
+                             selectedMetric === 'clicks' ? 'Clicks' : 
+                             selectedMetric === 'costInLocalCurrency' ? 'Cost' :
+                             selectedMetric === 'conversions' ? 'Qualified Leads' :
+                             selectedMetric === 'oneClickLeads' ? 'One-Click Leads' :
+                             selectedMetric === 'ctr' ? 'CTR' :
+                             selectedMetric === 'cpm' ? 'CPM' :
+                             selectedMetric === 'cpc' ? 'CPC' :
+                             selectedMetric === 'cpr' ? 'CPR' :
+                             'Cost per Lead',
+                      data: selectedCampaign.metrics.dailyData.map(item => {
+                        // For standard metrics, use the value directly
+                        if (['impressions', 'clicks', 'costInLocalCurrency', 'conversions', 'oneClickLeads'].includes(selectedMetric)) {
+                          return item[selectedMetric] || 0;
+                        }
+                        
+                        // For calculated metrics, compute them on the fly
+                        const impressions = item.impressions || 0;
+                        const clicks = item.clicks || 0;
+                        const cost = item.costInLocalCurrency || 0;
+                        const qualifiedLeads = item.conversions || 0;
+                        const oneClickLeads = item.oneClickLeads || 0;
+                        
+                        // Make sure to handle division by zero cases
+                        try {
+                          switch (selectedMetric) {
+                            case 'ctr':
+                              return impressions > 0 ? (clicks / impressions) * 100 : 0;
+                            case 'cpm':
+                              return impressions > 0 ? (cost / impressions) * 1000 : 0;
+                            case 'cpc':
+                              return clicks > 0 ? cost / clicks : 0;
+                            case 'cpr':
+                              return qualifiedLeads > 0 ? cost / qualifiedLeads : 0;
+                            case 'costPerLead':
+                              // Cost per lead is now based only on oneClickLeads
+                              return oneClickLeads > 0 ? cost / oneClickLeads : 0;
+                            default:
+                              return 0;
+                          }
+                        } catch (error) {
+                          console.error(`Error calculating ${selectedMetric}:`, error);
+                          return 0;
+                        }
+                      }),
                       borderColor: selectedMetric === 'impressions' ? 'rgba(54, 162, 235, 1)' : 
                                   selectedMetric === 'clicks' ? 'rgba(255, 99, 132, 1)' : 
-                                  'rgba(75, 192, 192, 1)',
+                                  selectedMetric === 'costInLocalCurrency' ? 'rgba(75, 192, 192, 1)' :
+                                  selectedMetric === 'conversions' ? 'rgba(153, 102, 255, 1)' :
+                                  'rgba(255, 159, 64, 1)',
                       backgroundColor: selectedMetric === 'impressions' ? 'rgba(54, 162, 235, 0.2)' : 
                                       selectedMetric === 'clicks' ? 'rgba(255, 99, 132, 0.2)' : 
-                                      'rgba(75, 192, 192, 0.2)',
+                                      selectedMetric === 'costInLocalCurrency' ? 'rgba(75, 192, 192, 0.2)' :
+                                      selectedMetric === 'conversions' ? 'rgba(153, 102, 255, 0.2)' :
+                                      'rgba(255, 159, 64, 0.2)',
                       tension: 0.1,
                       fill: true,
                     }
@@ -479,7 +783,15 @@ export function LinkedInAdsTab() {
                     title: {
                       display: true,
                       text: `${selectedMetric === 'impressions' ? 'Impressions' : 
-                             selectedMetric === 'clicks' ? 'Clicks' : 'Cost'} Over Time`,
+                             selectedMetric === 'clicks' ? 'Clicks' : 
+                             selectedMetric === 'costInLocalCurrency' ? 'Cost' :
+                             selectedMetric === 'conversions' ? 'Qualified Leads' :
+                             selectedMetric === 'oneClickLeads' ? 'One-Click Leads' :
+                             selectedMetric === 'ctr' ? 'CTR' :
+                             selectedMetric === 'cpm' ? 'CPM' :
+                             selectedMetric === 'cpc' ? 'CPC' :
+                             selectedMetric === 'cpr' ? 'CPR' :
+                             'Cost per Lead'} Over Time`,
                     },
                   },
                   scales: {

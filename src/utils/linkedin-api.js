@@ -192,7 +192,8 @@ export class LinkedInAPI {
                 impressions: 0,
                 clicks: 0,
                 costInLocalCurrency: 0,
-                conversions: 0
+                conversions: 0,
+                oneClickLeads: 0
               }
             };
           }
@@ -266,7 +267,7 @@ export class LinkedInAPI {
       const campaignsValue = `List(${encodedUrn})`;
       
       // Use the exact URL format that works - don't encode dateRange, only encode URN inside List()
-      const endpoint = `/rest/adAnalytics?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=${dateRangeValue}&campaigns=${campaignsValue}&fields=impressions,clicks,costInUsd,qualifiedLeads`;
+      const endpoint = `/rest/adAnalytics?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=${dateRangeValue}&campaigns=${campaignsValue}&fields=impressions,clicks,costInUsd,qualifiedLeads,oneClickLeads,dateRange`;
       
       // Use query parameter approach to avoid routing issues
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodeURIComponent(endpoint)}`;
@@ -294,6 +295,7 @@ export class LinkedInAPI {
         clicks: 0,
         costInLocalCurrency: 0,
         conversions: 0,
+        oneClickLeads: 0,
         dailyData: [] // Store daily data for time-series visualization
       };
       
@@ -322,15 +324,19 @@ export class LinkedInAPI {
             date,
             impressions: element.impressions || 0,
             clicks: element.clicks || 0,
-            costInLocalCurrency: element.costInUsd || 0,
-            conversions: element.qualifiedLeads || 0
+            // Parse costInUsd as a float to ensure numeric addition
+            costInLocalCurrency: parseFloat(element.costInUsd || 0),
+            conversions: element.qualifiedLeads || 0,
+            oneClickLeads: element.oneClickLeads || 0
           });
           
           // Sum up totals
           result.impressions += element.impressions || 0;
           result.clicks += element.clicks || 0;
-          result.costInLocalCurrency += element.costInUsd || 0;
+          // Parse costInUsd as a float to ensure numeric addition
+          result.costInLocalCurrency += parseFloat(element.costInUsd || 0);
           result.conversions += element.qualifiedLeads || 0;
+          result.oneClickLeads = (result.oneClickLeads || 0) + (element.oneClickLeads || 0);
         });
       }
       
@@ -396,7 +402,7 @@ export class LinkedInAPI {
       const campaignsValue = `List(${encodedUrn})`;
       
       // Use the exact URL format that works - don't encode dateRange, only encode URN inside List()
-      const endpoint = `/rest/adAnalytics?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=${dateRangeValue}&campaigns=${campaignsValue}&fields=impressions,clicks,costInUsd,qualifiedLeads`;
+      const endpoint = `/rest/adAnalytics?q=analytics&pivot=CAMPAIGN&timeGranularity=DAILY&dateRange=${dateRangeValue}&campaigns=${campaignsValue}&fields=impressions,clicks,costInUsd,qualifiedLeads,oneClickLeads,dateRange`;
       
       // Use query parameter approach to avoid routing issues
       const proxyUrl = `/api/linkedin-proxy?endpoint=${encodeURIComponent(endpoint)}`;
@@ -442,8 +448,10 @@ export class LinkedInAPI {
             date,
             impressions: item.impressions || 0,
             clicks: item.clicks || 0,
-            costInLocalCurrency: item.costInUsd || 0, // costInUsd is equivalent to costInLocalCurrency
-            conversions: item.qualifiedLeads || 0 // qualifiedLeads is equivalent to conversions
+            // Parse costInUsd as a float to ensure numeric addition
+            costInLocalCurrency: parseFloat(item.costInUsd || 0), // costInUsd is equivalent to costInLocalCurrency
+            conversions: item.qualifiedLeads || 0, // qualifiedLeads is equivalent to conversions
+            oneClickLeads: item.oneClickLeads || 0
           };
         }),
         paging: data.paging,
