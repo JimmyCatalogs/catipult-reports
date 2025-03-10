@@ -3,43 +3,11 @@ import { GoogleAnalyticsAPI } from '../../utils/google-analytics-api';
 import { LoadingBar } from '../LoadingBar';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-// Helper function to parse GA4 date format (YYYYMMDD)
-function formatGADate(gaDate) {
-  const year = gaDate.substring(0, 4);
-  const month = gaDate.substring(4, 6);
-  const day = gaDate.substring(6, 8);
-  const date = new Date(year, parseInt(month) - 1, day);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric'
-  });
-}
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-} from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { PageViewsPanel } from './PageViewsPanel';
+import { EventsPanel } from './EventsPanel';
 
 export function AnalyticsTab() {
+  const [activeTab, setActiveTab] = useState('pageViews'); // 'pageViews' or 'events'
   const [dateRange, setDateRange] = useState([
     new Date(new Date().setDate(new Date().getDate() - 7)), // 7 days ago
     new Date() // today
@@ -53,7 +21,22 @@ export function AnalyticsTab() {
     userMetrics: null,
     topPages: [],
     sourceMedium: [],
+    source: [],
+    medium: [],
+    events: [],
+    buttonClickEvents: [],
   });
+  const [trafficView, setTrafficView] = useState('sourceMedium'); // 'sourceMedium', 'source', or 'medium'
+  const [buttonClickView, setButtonClickView] = useState('pageLabel'); // 'pageLabel', 'page', or 'label'
+  const [selectedFilters, setSelectedFilters] = useState({
+    sourceMedium: [],
+    source: [],
+    medium: [],
+    buttonClickPageLabel: [],
+    buttonClickPage: [],
+    buttonClickLabel: [],
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   const analyticsClient = new GoogleAnalyticsAPI();
 
@@ -72,7 +55,11 @@ export function AnalyticsTab() {
       pageViews: [],
       userMetrics: null,
       topPages: [],
-      sourceMedium: []
+      sourceMedium: [],
+      source: [],
+      medium: [],
+      events: [],
+      buttonClickEvents: []
     };
     
     let hasDateRangeError = false;
@@ -132,6 +119,50 @@ export function AnalyticsTab() {
       }
     }
     
+    try {
+      newAnalyticsData.source = await analyticsClient.getSource(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching source data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    try {
+      newAnalyticsData.medium = await analyticsClient.getMedium(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching medium data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    try {
+      newAnalyticsData.events = await analyticsClient.getEvents(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching events data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    try {
+      newAnalyticsData.buttonClickEvents = await analyticsClient.getButtonClickEvents(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching button click events data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
     // Update state with the data we were able to fetch
     setAnalyticsData(newAnalyticsData);
     
@@ -169,51 +200,53 @@ export function AnalyticsTab() {
     setDateRange([start, end]);
   };
 
-  const pageViewsChartData = {
-    labels: analyticsData.pageViews
-      .slice() // Create a copy to avoid mutating the original array
-      .sort((a, b) => {
-        // Sort by date (YYYYMMDD format)
-        return a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value);
-      })
-      .map(row => formatGADate(row.dimensionValues[0].value)),
-    datasets: [{
-      label: 'Page Views',
-      data: analyticsData.pageViews
-        .slice() // Create a copy to avoid mutating the original array
-        .sort((a, b) => {
-          // Sort by date (YYYYMMDD format)
-          return a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value);
-        })
-        .map(row => parseInt(row.metricValues[0].value)),
-      borderColor: 'rgb(75, 192, 192)',
-      tension: 0.1
-    }]
+  const handleFilterChange = (option) => {
+    setSelectedFilters(prev => {
+      const currentFilters = [...prev[trafficView]];
+      if (currentFilters.includes(option)) {
+        return {
+          ...prev,
+          [trafficView]: currentFilters.filter(item => item !== option)
+        };
+      } else {
+        return {
+          ...prev,
+          [trafficView]: [...currentFilters, option]
+        };
+      }
+    });
   };
-
-  const topPagesChartData = {
-    labels: analyticsData.topPages.map(row => {
-      const path = row.dimensionValues[0].value;
-      return path === '/' ? 'Home' : path.replace(/^\//, '');
-    }),
-    datasets: [{
-      label: 'Views',
-      data: analyticsData.topPages.map(row => parseInt(row.metricValues[0].value)),
-      backgroundColor: 'rgba(53, 162, 235, 0.5)',
-    }]
+  
+  const handleViewChange = (view) => {
+    setTrafficView(view);
   };
-
-  const sourceMediumChartData = {
-    labels: analyticsData.sourceMedium.map(row => {
-      const sessionSource = row.dimensionValues[0].value || '(not set)';
-      const sessionMedium = row.dimensionValues[1].value || '(not set)';
-      return `${sessionSource} / ${sessionMedium}`;
-    }),
-    datasets: [{
-      label: 'Users',
-      data: analyticsData.sourceMedium.map(row => parseInt(row.metricValues[0].value)),
-      backgroundColor: 'rgba(75, 192, 192, 0.5)',
-    }]
+  
+  const handleButtonClickViewChange = (view) => {
+    setButtonClickView(view);
+  };
+  
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+  
+  const handleButtonClickFilterChange = (option) => {
+    const filterType = buttonClickView === 'pageLabel' ? 'buttonClickPageLabel' : 
+                      buttonClickView === 'page' ? 'buttonClickPage' : 'buttonClickLabel';
+    
+    setSelectedFilters(prev => {
+      const currentFilters = [...prev[filterType]];
+      if (currentFilters.includes(option)) {
+        return {
+          ...prev,
+          [filterType]: currentFilters.filter(item => item !== option)
+        };
+      } else {
+        return {
+          ...prev,
+          [filterType]: [...currentFilters, option]
+        };
+      }
+    });
   };
 
   return (
@@ -237,6 +270,28 @@ export function AnalyticsTab() {
           <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)' }}>
             Google Analytics
           </h1>
+        </div>
+        <div className="flex border-b mb-4">
+          <button
+            onClick={() => setActiveTab('pageViews')}
+            className={`px-4 py-2 font-medium ${
+              activeTab === 'pageViews'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Page Views
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`px-4 py-2 font-medium ${
+              activeTab === 'events'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Events
+          </button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <button
@@ -269,97 +324,48 @@ export function AnalyticsTab() {
               placeholderText="Select date range"
             />
           </div>
+          {analyticsData.userMetrics && !dateRangeError && (
+            <div className="bg-white py-2 px-3 rounded-md shadow-sm border border-gray-100 inline-flex items-center gap-2 ml-auto">
+              <span className="text-sm text-gray-600">Total Visitors:</span>
+              <span className="text-lg text-gray-800">{analyticsData.userMetrics.metricValues[0].value}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {analyticsData.userMetrics && !dateRangeError && (
-          <>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Total Visitors</h3>
-              <p className="text-3xl">{analyticsData.userMetrics.metricValues[0].value}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">New Visitors</h3>
-              <p className="text-3xl">{analyticsData.userMetrics.metricValues[1].value}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Active Visitors</h3>
-              <p className="text-3xl">{analyticsData.userMetrics.metricValues[2].value}</p>
-            </div>
-          </>
-        )}
-      </div>
-
-      {!dateRangeError && (
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Page Views Over Time</h3>
-          <div className="h-[300px]">
-            {analyticsData.pageViews.length > 0 && (
-            <Line 
-              data={pageViewsChartData} 
-              options={{ 
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    title: {
-                      display: true,
-                      text: 'Page Views'
-                    }
-                  }
-                }
-              }} 
-            />
-            )}
-          </div>
-        </div>
+      {/* Page Views Tab Content */}
+      {activeTab === 'pageViews' && !dateRangeError && (
+        <PageViewsPanel 
+          pageViews={analyticsData.pageViews}
+          topPages={analyticsData.topPages}
+          sourceMedium={analyticsData.sourceMedium}
+          source={analyticsData.source}
+          medium={analyticsData.medium}
+          dateRangeError={dateRangeError}
+          trafficView={trafficView}
+          handleViewChange={handleViewChange}
+          showFilters={showFilters}
+          toggleFilters={toggleFilters}
+          selectedFilters={selectedFilters}
+          handleFilterChange={handleFilterChange}
+          setSelectedFilters={setSelectedFilters}
+        />
       )}
 
-      {!dateRangeError && (
-        <div className="bg-white p-4 rounded-lg shadow mt-6">
-          <h3 className="text-lg font-semibold mb-4">Top Pages</h3>
-          <div className="h-[400px]">
-            {analyticsData.topPages.length > 0 && (
-              <Bar 
-                data={topPagesChartData}
-                options={{
-                  indexAxis: 'y',
-                  maintainAspectRatio: false,
-                }}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {!dateRangeError && (
-        <div className="bg-white p-4 rounded-lg shadow mt-6">
-          <h3 className="text-lg font-semibold mb-4">Session Traffic Sources</h3>
-          <div className="h-[400px]">
-            {analyticsData.sourceMedium.length > 0 && (
-              <Bar 
-                data={sourceMediumChartData}
-                options={{
-                  indexAxis: 'y',
-                  maintainAspectRatio: false,
-                  plugins: {
-                    tooltip: {
-                      callbacks: {
-                        title: function(context) {
-                          return context[0].label;
-                        },
-                        label: function(context) {
-                          return `Users: ${context.raw}`;
-                        }
-                      }
-                    }
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
+      {/* Events Tab Content */}
+      {activeTab === 'events' && !dateRangeError && (
+        <EventsPanel 
+          events={analyticsData.events}
+          buttonClickEvents={analyticsData.buttonClickEvents}
+          dateRangeError={dateRangeError}
+          buttonClickView={buttonClickView}
+          handleButtonClickViewChange={handleButtonClickViewChange}
+          showFilters={showFilters}
+          setShowFilters={setShowFilters}
+          selectedFilters={selectedFilters}
+          handleButtonClickFilterChange={handleButtonClickFilterChange}
+          setSelectedFilters={setSelectedFilters}
+        />
       )}
     </div>
   );

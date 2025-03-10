@@ -203,6 +203,161 @@ export default async function handler(req, res) {
         }
         return res.json(response.rows);
       }
+      
+      case 'source': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensions: [
+            { name: 'sessionSource' }
+          ],
+          orderBys: [
+            {
+              metric: { metricName: 'totalUsers' },
+              desc: true,
+            },
+          ],
+          limit: 20,
+        });
+        
+        console.log('Source API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
+      
+      case 'medium': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensions: [
+            { name: 'sessionMedium' }
+          ],
+          orderBys: [
+            {
+              metric: { metricName: 'totalUsers' },
+              desc: true,
+            },
+          ],
+          limit: 20,
+        });
+        
+        console.log('Medium API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
+
+      case 'events': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'eventCount' }],
+          dimensions: [
+            { name: 'eventName' },
+            { name: 'date' }
+          ],
+          orderBys: [
+            {
+              dimension: { dimensionName: 'date' },
+              desc: false,
+            },
+            {
+              metric: { metricName: 'eventCount' },
+              desc: true,
+            },
+          ],
+        });
+        
+        console.log('Events API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
+
+      case 'buttonClicks': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'eventCount' }],
+          dimensions: [
+            { name: 'eventName' },
+            { name: 'customEvent:event_label' },  // Changed to match custom dimension
+            { name: 'customEvent:page_path' },    // Changed to match custom dimension
+            { name: 'date' }
+          ],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: {
+                value: 'button_click',  // Make sure this matches the actual event name in GA
+                matchType: 'EXACT'
+              }
+            }
+          },
+          orderBys: [
+            {
+              dimension: { dimensionName: 'date' },
+              desc: false,
+            },
+            {
+              metric: { metricName: 'eventCount' },
+              desc: true,
+            },
+          ],
+        });
+        
+        console.log('Button Clicks API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
 
       default:
         return res.status(400).json({ error: 'Invalid metric specified' });
