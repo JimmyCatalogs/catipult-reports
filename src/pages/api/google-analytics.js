@@ -271,6 +271,40 @@ export default async function handler(req, res) {
         }
         return res.json(response.rows);
       }
+      
+      case 'campaign': {
+        const [response] = await analyticsDataClient.runReport({
+          property: propertyId,
+          dateRanges: [{ 
+            startDate,
+            endDate
+          }],
+          metrics: [{ name: 'totalUsers' }],
+          dimensions: [
+            { name: 'sessionCampaignName' }
+          ],
+          orderBys: [
+            {
+              metric: { metricName: 'totalUsers' },
+              desc: true,
+            },
+          ],
+          limit: 20,
+        });
+        
+        console.log('Campaign API response:', {
+          hasRows: !!response.rows?.length,
+          rowCount: response.rows?.length || 0,
+          startDate,
+          endDate
+        });
+        
+        // If no data returned, return empty array instead of error
+        if (!response.rows?.length) {
+          return res.json([]);
+        }
+        return res.json(response.rows);
+      }
 
       case 'events': {
         const [response] = await analyticsDataClient.runReport({

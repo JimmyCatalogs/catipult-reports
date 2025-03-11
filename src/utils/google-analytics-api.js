@@ -70,6 +70,20 @@ export class GoogleAnalyticsAPI {
       throw error;
     }
   }
+  
+  async getCampaign(startDate, endDate) {
+    try {
+      const response = await fetch(`/api/google-analytics?metric=campaign&startDate=${startDate}&endDate=${endDate}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw data;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error fetching campaign data:', error);
+      throw error;
+    }
+  }
 
   async getPageViews(startDate, endDate) {
     try {

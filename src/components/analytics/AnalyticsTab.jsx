@@ -23,15 +23,17 @@ export function AnalyticsTab() {
     sourceMedium: [],
     source: [],
     medium: [],
+    campaign: [],
     events: [],
     buttonClickEvents: [],
   });
-  const [trafficView, setTrafficView] = useState('sourceMedium'); // 'sourceMedium', 'source', or 'medium'
+  const [trafficView, setTrafficView] = useState('sourceMedium'); // 'sourceMedium', 'source', 'medium', or 'campaign'
   const [buttonClickView, setButtonClickView] = useState('pageLabel'); // 'pageLabel', 'page', or 'label'
   const [selectedFilters, setSelectedFilters] = useState({
     sourceMedium: [],
     source: [],
     medium: [],
+    campaign: [],
     buttonClickPageLabel: [],
     buttonClickPage: [],
     buttonClickLabel: [],
@@ -58,6 +60,7 @@ export function AnalyticsTab() {
       sourceMedium: [],
       source: [],
       medium: [],
+      campaign: [],
       events: [],
       buttonClickEvents: []
     };
@@ -134,6 +137,17 @@ export function AnalyticsTab() {
       newAnalyticsData.medium = await analyticsClient.getMedium(startDate, endDate);
     } catch (err) {
       console.error('Error fetching medium data:', err);
+      if (err.error === 'DATE_TOO_EARLY') {
+        hasDateRangeError = true;
+      } else {
+        hasOtherError = true;
+      }
+    }
+    
+    try {
+      newAnalyticsData.campaign = await analyticsClient.getCampaign(startDate, endDate);
+    } catch (err) {
+      console.error('Error fetching campaign data:', err);
       if (err.error === 'DATE_TOO_EARLY') {
         hasDateRangeError = true;
       } else {
@@ -341,6 +355,7 @@ export function AnalyticsTab() {
           sourceMedium={analyticsData.sourceMedium}
           source={analyticsData.source}
           medium={analyticsData.medium}
+          campaign={analyticsData.campaign}
           dateRangeError={dateRangeError}
           trafficView={trafficView}
           handleViewChange={handleViewChange}

@@ -19,6 +19,7 @@ export function PageViewsPanel({
   sourceMedium, 
   source, 
   medium, 
+  campaign,
   dateRangeError,
   trafficView,
   handleViewChange,
@@ -80,6 +81,9 @@ export function PageViewsPanel({
       } else if (filterType === 'medium') {
         const medium = row.dimensionValues[0].value || '(not set)';
         return filters.includes(medium);
+      } else if (filterType === 'campaign') {
+        const campaign = row.dimensionValues[0].value || '(not set)';
+        return filters.includes(campaign);
       }
       return true;
     });
@@ -119,6 +123,19 @@ export function PageViewsPanel({
       backgroundColor: 'rgba(75, 192, 192, 0.5)',
     }]
   };
+  
+  const campaignChartData = {
+    labels: campaign && campaign.length > 0 ? 
+      getFilteredData(campaign, 'campaign', selectedFilters.campaign).map(row => {
+        return row.dimensionValues[0].value || '(not set)';
+      }) : [],
+    datasets: [{
+      label: 'Users',
+      data: campaign && campaign.length > 0 ? 
+        getFilteredData(campaign, 'campaign', selectedFilters.campaign).map(row => parseInt(row.metricValues[0].value)) : [],
+      backgroundColor: 'rgba(75, 192, 192, 0.5)',
+    }]
+  };
 
   // Get all available filter options for the current view
   const getFilterOptions = () => {
@@ -132,6 +149,9 @@ export function PageViewsPanel({
       return source.map(row => row.dimensionValues[0].value || '(not set)');
     } else if (trafficView === 'medium') {
       return medium.map(row => row.dimensionValues[0].value || '(not set)');
+    } else if (trafficView === 'campaign') {
+      return campaign && campaign.length > 0 ? 
+        campaign.map(row => row.dimensionValues[0].value || '(not set)') : [];
     }
     return [];
   };
@@ -180,7 +200,7 @@ export function PageViewsPanel({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
           <h3 className="text-lg font-semibold">Session Traffic Sources</h3>
           <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => handleViewChange('sourceMedium')}
                 className={`px-3 py-1 text-sm rounded-md ${
@@ -211,6 +231,16 @@ export function PageViewsPanel({
               >
                 Medium
               </button>
+              <button
+                onClick={() => handleViewChange('campaign')}
+                className={`px-3 py-1 text-sm rounded-md ${
+                  trafficView === 'campaign'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Campaign
+              </button>
             </div>
             <button
               onClick={toggleFilters}
@@ -239,7 +269,13 @@ export function PageViewsPanel({
         
         {showFilters && (
           <div className="mb-4 p-3 border rounded-md bg-gray-50">
-            <h4 className="text-sm font-medium mb-2">Filter by {trafficView === 'sourceMedium' ? 'Source / Medium' : trafficView === 'source' ? 'Source' : 'Medium'}</h4>
+            <h4 className="text-sm font-medium mb-2">
+              Filter by {
+                trafficView === 'sourceMedium' ? 'Source / Medium' : 
+                trafficView === 'source' ? 'Source' : 
+                trafficView === 'medium' ? 'Medium' : 'Campaign'
+              }
+            </h4>
             <div className="max-h-40 overflow-y-auto">
               {getFilterOptions().map((option, index) => (
                 <div key={index} className="flex items-center mb-1">
@@ -315,6 +351,28 @@ export function PageViewsPanel({
           {trafficView === 'medium' && medium.length > 0 && (
             <Bar 
               data={mediumChartData}
+              options={{
+                indexAxis: 'y',
+                maintainAspectRatio: false,
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      title: function(context) {
+                        return context[0].label;
+                      },
+                      label: function(context) {
+                        return `Users: ${context.raw}`;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          )}
+          
+          {trafficView === 'campaign' && campaign && campaign.length > 0 && (
+            <Bar 
+              data={campaignChartData}
               options={{
                 indexAxis: 'y',
                 maintainAspectRatio: false,
